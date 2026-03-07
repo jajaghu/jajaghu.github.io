@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seni Rupa Di Sini</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a0a;
+      color: #f0ece4;
+      font-family: 'Georgia', serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
+
+    .content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 2rem;
+      animation: fadeIn 2s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .label {
+      font-size: 0.85rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #a89880;
+      margin-bottom: 1.2rem;
+    }
+
+    h1 {
+      font-size: clamp(2.8rem, 8vw, 5.5rem);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+      color: #f0ece4;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 span {
+      font-style: italic;
+      color: #c9b99a;
+    }
+
+    .divider {
+      width: 60px;
+      height: 1px;
+      background: #a89880;
+      margin: 1.8rem auto;
+      opacity: 0.6;
+    }
+
+    .subtitle {
+      font-size: clamp(1rem, 3vw, 1.25rem);
+      color: #a89880;
+      letter-spacing: 0.1em;
+      margin-bottom: 3rem;
+      font-style: italic;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .enter-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem;
+      width: 220px;
+      padding: 1rem 2rem;
+      border: 1px solid #a89880;
+      color: #f0ece4;
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .enter-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: rgba(200,185,154,0.15);
+      transition: left 0.4s ease;
+    }
+
+    .enter-btn:hover::before,
+    .enter-btn:active::before {
+      left: 0;
+    }
+
+    .enter-btn:hover {
+      border-color: #f0ece4;
+      letter-spacing: 0.3em;
+    }
+
+    .enter-btn .icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .hint {
+      margin-top: 1.8rem;
+      font-size: 0.75rem;
+      color: #555;
+      letter-spacing: 0.15em;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="content">
+  <p class="label">Selamat Datang</p>
+  <h1>Cerita-cerita<br><span>di Candi Jago</span></h1>
+  <div class="divider"></div>
+  <p class="subtitle">Kura-kura· Bangau· Kambing Betina</p>
+
+  <div class="btn-group">
+    <button class="enter-btn" id="btnKisah">
+      <span class="icon">✦</span>Kura-kura dan Angsa
+    </button>
+    <button class="enter-btn" id="btnPindai">
+      <span class="icon">⬡</span>Bangau dan Ketam
+    </button>
+	<button class="enter-btn" id="btnPindai2">
+      <span class="icon">⬡</span>Kambing dan Singa
+    </button>
+  </div>
+
+  <p class="hint">pilih untuk melanjutkan</p>
+</div>
+
+<script>
+  // ── Partikel Canvas ──
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  class Particle {
+    constructor() { this.reset(true); }
+    reset(init) {
+      this.x  = Math.random() * W;
+      this.y  = init ? Math.random() * H : H + 5;
+      this.r  = Math.random() * 1.5 + 0.3;
+      this.vy = -(Math.random() * 0.4 + 0.15);
+      this.vx = (Math.random() - 0.5) * 0.2;
+      this.alpha = Math.random() * 0.5 + 0.1;
+      this.fade  = Math.random() * 0.003 + 0.001;
+    }
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.alpha -= this.fade;
+      if (this.alpha <= 0 || this.y < -5) this.reset(false);
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,185,154,${this.alpha})`;
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // ── Fullscreen Helper ──
+  function goFullscreen(url) {
+    const el = document.documentElement;
+    const fs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+    if (fs) fs.call(el).catch(() => {});
+    setTimeout(() => { window.location.href = url; }, 300);
+  }
+
+  // ── Tombol 1: Kisah Seni → halaman cerita ──
+  document.getElementById('btnKisah').addEventListener('click', function () {
+    goFullscreen('kata/dictio3.html'); // ← ganti sesuai nama halaman cerita Anda
+  });
+
+  // ── Tombol 2: Pindai → aplikasi MindAR ──
+  document.getElementById('btnPindai').addEventListener('click', function () {
+    goFullscreen('loadapp.html'); // ← ganti sesuai nama halaman MindAR Anda
+  });
+  // ── Tombol 3: Pindai → aplikasi MindAR ──
+  document.getElementById('btnPindai2').addEventListener('click', function () {
+    goFullscreen('loadapp.html'); // ← ganti sesuai nama halaman MindAR Anda
+  });
+</script>
+</body>
+</html>
