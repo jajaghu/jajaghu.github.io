@@ -5,13 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>AR Mind Scan</title>
 
-  <!-- ===== STYLES ===== -->
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       background: #000;
@@ -21,7 +16,6 @@
       height: 100vh;
     }
 
-    /* ── AR Container ── */
     #ar-container {
       position: fixed;
       inset: 0;
@@ -29,7 +23,6 @@
       height: 100%;
     }
 
-    /* ── Loading Screen ── */
     #loading-screen {
       position: fixed;
       inset: 0;
@@ -106,7 +99,6 @@
       letter-spacing: 2px;
     }
 
-    /* ── HUD Overlay ── */
     #hud-overlay {
       position: fixed;
       inset: 0;
@@ -114,7 +106,6 @@
       z-index: 100;
     }
 
-    /* Corner brackets */
     .corner {
       position: absolute;
       width: 40px;
@@ -143,12 +134,9 @@
     .corner-br::before { bottom:0; right:0; width:100%; height:2px; }
     .corner-br::after  { bottom:0; right:0; width:2px;  height:100%; }
 
-    /* Top bar */
     #hud-top {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -181,21 +169,16 @@
       animation: pulse 2s ease-in-out infinite;
     }
 
-    .status-dot.active {
-      background: #00e676;
-    }
+    .status-dot.active { background: #00e676; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50%       { opacity: 0.4; transform: scale(0.8); }
     }
 
-    /* Bottom info panel */
     #info-panel {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      bottom: 0; left: 0; right: 0;
       padding: 20px 24px 32px;
       background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 100%);
       transform: translateY(100%);
@@ -203,9 +186,7 @@
       pointer-events: auto;
     }
 
-    #info-panel.visible {
-      transform: translateY(0);
-    }
+    #info-panel.visible { transform: translateY(0); }
 
     #info-panel-number {
       font-size: 11px;
@@ -230,7 +211,6 @@
       max-width: 420px;
     }
 
-    /* Audio controls */
     #audio-controls {
       display: flex;
       align-items: center;
@@ -280,9 +260,7 @@
       animation: none;
     }
 
-    .wave-bar.playing {
-      animation: waveBounce 0.8s ease-in-out infinite;
-    }
+    .wave-bar.playing { animation: waveBounce 0.8s ease-in-out infinite; }
 
     .wave-bar:nth-child(1) { animation-delay: 0.0s; height: 8px; }
     .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 14px; }
@@ -297,11 +275,9 @@
       50%       { transform: scaleY(1.2); }
     }
 
-    /* Scan ring indicator */
     #scan-indicator {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       width: 180px;
       height: 180px;
@@ -309,9 +285,7 @@
       transition: opacity 0.5s;
     }
 
-    #scan-indicator.hidden {
-      opacity: 0;
-    }
+    #scan-indicator.hidden { opacity: 0; }
 
     #scan-indicator svg {
       width: 100%;
@@ -336,11 +310,9 @@
       white-space: nowrap;
     }
 
-    /* Target counter */
     #target-counter {
       position: absolute;
-      top: 56px;
-      right: 24px;
+      top: 56px; right: 24px;
       font-size: 11px;
       color: rgba(255,255,255,0.4);
       letter-spacing: 2px;
@@ -353,7 +325,6 @@
       font-size: 18px;
     }
 
-    /* Toast notification */
     #toast {
       position: absolute;
       top: 64px;
@@ -371,46 +342,37 @@
       backdrop-filter: blur(8px);
     }
 
-    #toast.show {
-      transform: translateX(-50%) translateY(0);
-    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
   </style>
 
-  <!-- ===== DEPENDENCIES ===== -->
-  <!-- URUTAN PENTING: Three.js → GLTFLoader → MindAR → Howler → app.js -->
+  <!-- ===== DEPENDENCIES =====
+       URUTAN WAJIB: Three.js → GLTFLoader → MindAR → Howler → app.js
+  ========================== -->
 
   <!-- 1. Three.js PERTAMA -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- 2. GLTFLoader (butuh THREE tersedia dulu) -->
+  <!-- 2. GLTFLoader -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-  <!-- 3. MindAR (butuh THREE tersedia dulu) -->
-<script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+  <!-- 3. MindAR - versi 1.1.4 paling stabil tanpa import error -->
+  <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
 
-  <!-- 4. Howler.js untuk audio -->
+  <!-- 4. Howler.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 
 </head>
 
 <body>
 
-  <!-- ═══════════════════════════════════════
-       LOADING SCREEN
-  ═══════════════════════════════════════ -->
   <div id="loading-screen">
     <div class="loading-logo">
       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Outer ring -->
         <circle cx="50" cy="50" r="46" stroke="#4fc3f7" stroke-width="1.5" stroke-dasharray="8 4" opacity="0.4"/>
-        <!-- Middle ring -->
         <circle cx="50" cy="50" r="34" stroke="#4fc3f7" stroke-width="1" stroke-dasharray="4 8" opacity="0.6"/>
-        <!-- Inner core -->
         <circle cx="50" cy="50" r="18" stroke="#00e5ff" stroke-width="2" fill="rgba(79,195,247,0.08)"/>
-        <!-- Brain icon simplified -->
         <path d="M42 44 Q40 38 44 36 Q48 33 50 36 Q52 33 56 36 Q60 38 58 44 Q62 46 60 52 Q58 56 54 56 L46 56 Q42 56 40 52 Q38 46 42 44Z"
               stroke="#4fc3f7" stroke-width="1.5" fill="rgba(79,195,247,0.15)"/>
-        <!-- Scan lines -->
         <line x1="28" y1="50" x2="36" y2="50" stroke="#00e5ff" stroke-width="1.5" opacity="0.8"/>
         <line x1="64" y1="50" x2="72" y2="50" stroke="#00e5ff" stroke-width="1.5" opacity="0.8"/>
         <line x1="50" y1="28" x2="50" y2="36" stroke="#00e5ff" stroke-width="1.5" opacity="0.8"/>
@@ -425,23 +387,15 @@
     <div class="loading-text" id="loading-text">INITIALIZING SYSTEM...</div>
   </div>
 
-  <!-- ═══════════════════════════════════════
-       AR CONTAINER  (MindAR mounts here)
-  ═══════════════════════════════════════ -->
   <div id="ar-container"></div>
 
-  <!-- ═══════════════════════════════════════
-       HUD OVERLAY
-  ═══════════════════════════════════════ -->
   <div id="hud-overlay">
 
-    <!-- Corners -->
     <div class="corner corner-tl"></div>
     <div class="corner corner-tr"></div>
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
 
-    <!-- Top bar -->
     <div id="hud-top">
       <div id="hud-title">Mind Scan AR</div>
       <div id="hud-status">
@@ -450,20 +404,17 @@
       </div>
     </div>
 
-    <!-- Target counter -->
     <div id="target-counter">
       TARGET<br>
       <span id="target-num">—</span>
     </div>
 
-    <!-- Scan ring in center -->
     <div id="scan-indicator">
       <svg viewBox="0 0 180 180" fill="none">
         <circle cx="90" cy="90" r="85" stroke="#4fc3f7" stroke-width="1"
                 stroke-dasharray="12 6" opacity="0.3"/>
         <circle cx="90" cy="90" r="70" stroke="#4fc3f7" stroke-width="1.5"
                 stroke-dasharray="4 20" opacity="0.5"/>
-        <!-- Corner ticks -->
         <path d="M90 8 L90 22"  stroke="#00e5ff" stroke-width="2"/>
         <path d="M90 158 L90 172" stroke="#00e5ff" stroke-width="2"/>
         <path d="M8 90 L22 90"  stroke="#00e5ff" stroke-width="2"/>
@@ -472,16 +423,13 @@
       <div class="scan-label">Arahkan ke target</div>
     </div>
 
-    <!-- Info panel (bottom) -->
     <div id="info-panel">
       <div id="info-panel-number">TARGET 01 / 12</div>
       <div id="info-panel-title">Nama Objek</div>
       <div id="info-panel-desc">Deskripsi singkat tentang objek 3D yang ditampilkan.</div>
       <div id="audio-controls">
         <button id="btn-play-pause">
-          <!-- Play icon (default) -->
           <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          <!-- Pause icon (hidden by default) -->
           <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           <span id="btn-label">PLAY AUDIO</span>
         </button>
@@ -497,17 +445,11 @@
       </div>
     </div>
 
-    <!-- Toast -->
     <div id="toast">TARGET TERDETEKSI</div>
 
-  </div><!-- /#hud-overlay -->
+  </div>
 
-  <!-- ═══════════════════════════════════════
-       APP SCRIPT
-       - Diload PALING TERAKHIR setelah semua library siap
-       - Lewat proxy untuk CORS & proteksi file
-       - TANPA type="module" karena app.js pakai var biasa
-  ═══════════════════════════════════════ -->
+  <!-- 5. app.js PALING TERAKHIR lewat proxy -->
   <script src="https://jajaghu.infinityfree.me/proxy.php?file=js/app.js"></script>
 
 </body>
