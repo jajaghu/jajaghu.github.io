@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>AR Mind Scan</title>
 
-  <!-- ✅ HANYA 2 script ini yang dibutuhkan. Jangan tambah Three.js atau GLTFLoader terpisah. -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
@@ -14,14 +13,10 @@
     body { background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
 
     a-scene, canvas {
-      width: 100vw !important;
-      height: 100vh !important;
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
+      width: 100vw !important; height: 100vh !important;
+      position: fixed !important; top: 0 !important; left: 0 !important;
     }
 
-    /* ── Loading Screen ── */
     #loading-screen {
       position: fixed; inset: 0;
       background: linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 50%, #0a0a1a 100%);
@@ -29,47 +24,36 @@
       z-index: 9999; transition: opacity 0.8s ease;
     }
     #loading-screen.hidden { opacity: 0; pointer-events: none; }
-
     .loading-logo { width: 120px; height: 120px; margin-bottom: 32px; }
     .loading-logo svg { width: 100%; height: 100%; animation: rotateLogo 4s linear infinite; }
     @keyframes rotateLogo { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
     .loading-title { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: 6px; text-transform: uppercase; margin-bottom: 8px; }
     .loading-subtitle { font-size: 13px; color: #4fc3f7; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 40px; }
     .loading-bar-wrap { width: 260px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-bottom: 16px; }
     .loading-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #4fc3f7, #00e5ff); border-radius: 2px; transition: width 0.4s ease; box-shadow: 0 0 12px #4fc3f7; }
     .loading-text { font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: 2px; }
 
-    /* ── Start Button (tap to begin) ── */
     #start-screen {
       position: fixed; inset: 0;
       background: linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 50%, #0a0a1a 100%);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 9998; cursor: pointer;
+      z-index: 9998;
     }
     #start-screen.hidden { display: none; }
     #start-icon { font-size: 64px; margin-bottom: 24px; }
     #start-title { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 4px; margin-bottom: 10px; text-transform: uppercase; }
     #start-sub { font-size: 13px; color: #4fc3f7; letter-spacing: 2px; margin-bottom: 40px; }
     #start-btn {
-      background: rgba(79,195,247,0.15);
-      border: 1px solid rgba(79,195,247,0.6);
-      color: #4fc3f7;
-      font-size: 14px; letter-spacing: 3px;
+      background: rgba(79,195,247,0.15); border: 1px solid rgba(79,195,247,0.6);
+      color: #4fc3f7; font-size: 14px; letter-spacing: 3px;
       padding: 14px 36px; border-radius: 4px; cursor: pointer;
       text-transform: uppercase; transition: all 0.2s;
     }
     #start-btn:hover { background: rgba(79,195,247,0.3); }
 
-    /* ── HUD Overlay ── */
-    #hud {
-      position: fixed; inset: 0;
-      pointer-events: none; z-index: 200;
-      display: none;
-    }
+    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 200; display: none; }
     #hud.visible { display: block; }
 
-    /* Corner brackets */
     .corner { position: absolute; width: 40px; height: 40px; }
     .corner::before, .corner::after { content: ''; position: absolute; background: #4fc3f7; opacity: 0.8; }
     .corner-tl { top: 16px; left: 16px; }
@@ -87,8 +71,7 @@
 
     #hud-top {
       position: absolute; top: 0; left: 0; right: 0;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between; padding: 14px 24px;
       background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
     }
     #hud-title { font-size: 13px; font-weight: 700; color: #4fc3f7; letter-spacing: 4px; text-transform: uppercase; }
@@ -100,29 +83,19 @@
     #target-counter { position: absolute; top: 56px; right: 24px; font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-align: right; }
     #target-counter span { color: #4fc3f7; font-weight: 700; font-size: 18px; }
 
-    /* Scan ring */
     #scan-ring {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 180px; height: 180px;
-      pointer-events: none; transition: opacity 0.5s;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 180px; height: 180px; pointer-events: none; transition: opacity 0.5s;
     }
     #scan-ring.hidden { opacity: 0; }
     #scan-ring svg { width: 100%; height: 100%; animation: scanRotate 3s linear infinite; }
     @keyframes scanRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .scan-label {
-      position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%);
-      font-size: 10px; color: rgba(79,195,247,0.7); letter-spacing: 3px;
-      text-transform: uppercase; white-space: nowrap;
-    }
+    .scan-label { position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%); font-size: 10px; color: rgba(79,195,247,0.7); letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; }
 
-    /* Info panel */
     #info-panel {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 20px 24px 32px;
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 24px 32px;
       background: linear-gradient(0deg, rgba(0,0,0,0.82) 0%, transparent 100%);
-      transform: translateY(100%);
-      transition: transform 0.5s cubic-bezier(0.16,1,0.3,1);
+      transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.16,1,0.3,1);
       pointer-events: auto;
     }
     #info-panel.visible { transform: translateY(0); }
@@ -130,14 +103,12 @@
     #info-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
     #info-desc { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6; margin-bottom: 16px; max-width: 420px; }
 
-    /* Audio controls */
     #audio-controls { display: flex; align-items: center; gap: 16px; }
     #btn-audio {
       display: flex; align-items: center; gap: 8px;
       background: rgba(79,195,247,0.15); border: 1px solid rgba(79,195,247,0.4);
       color: #4fc3f7; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
-      padding: 10px 20px; border-radius: 4px; cursor: pointer; transition: all 0.2s;
-      pointer-events: auto;
+      padding: 10px 20px; border-radius: 4px; cursor: pointer; transition: all 0.2s; pointer-events: auto;
     }
     #btn-audio:hover { background: rgba(79,195,247,0.3); border-color: #4fc3f7; }
     #btn-audio svg { width: 14px; height: 14px; fill: currentColor; }
@@ -154,37 +125,31 @@
     .wb:nth-child(7) { height:16px; animation-delay:0.1s; }
     @keyframes wv { 0%,100% { transform:scaleY(0.4); } 50% { transform:scaleY(1.2); } }
 
-    /* Toast */
     #toast {
       position: absolute; top: 64px; left: 50%;
       transform: translateX(-50%) translateY(-80px);
       background: rgba(79,195,247,0.15); border: 1px solid rgba(79,195,247,0.5);
       color: #4fc3f7; font-size: 12px; letter-spacing: 2px;
       padding: 10px 24px; border-radius: 4px; white-space: nowrap;
-      transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
-      backdrop-filter: blur(8px);
+      transition: transform 0.4s cubic-bezier(0.16,1,0.3,1); backdrop-filter: blur(8px);
     }
     #toast.show { transform: translateX(-50%) translateY(0); }
 
-    /* Error */
     #error-msg {
       display: none; position: fixed; bottom: 20px; left: 0; width: 100%;
-      text-align: center; color: #ff5252; font-size: 13px; z-index: 9999;
-      padding: 0 20px;
+      text-align: center; color: #ff5252; font-size: 13px; z-index: 9999; padding: 0 20px;
     }
   </style>
 </head>
 <body>
 
-  <!-- ── Loading Screen ── -->
   <div id="loading-screen">
     <div class="loading-logo">
       <svg viewBox="0 0 100 100" fill="none">
         <circle cx="50" cy="50" r="46" stroke="#4fc3f7" stroke-width="1.5" stroke-dasharray="8 4" opacity="0.4"/>
         <circle cx="50" cy="50" r="34" stroke="#4fc3f7" stroke-width="1"   stroke-dasharray="4 8" opacity="0.6"/>
         <circle cx="50" cy="50" r="18" stroke="#00e5ff" stroke-width="2"   fill="rgba(79,195,247,0.08)"/>
-        <path d="M42 44 Q40 38 44 36 Q48 33 50 36 Q52 33 56 36 Q60 38 58 44 Q62 46 60 52 Q58 56 54 56 L46 56 Q42 56 40 52 Q38 46 42 44Z"
-              stroke="#4fc3f7" stroke-width="1.5" fill="rgba(79,195,247,0.15)"/>
+        <path d="M42 44 Q40 38 44 36 Q48 33 50 36 Q52 33 56 36 Q60 38 58 44 Q62 46 60 52 Q58 56 54 56 L46 56 Q42 56 40 52 Q38 46 42 44Z" stroke="#4fc3f7" stroke-width="1.5" fill="rgba(79,195,247,0.15)"/>
         <line x1="28" y1="50" x2="36" y2="50" stroke="#00e5ff" stroke-width="1.5" opacity="0.8"/>
         <line x1="64" y1="50" x2="72" y2="50" stroke="#00e5ff" stroke-width="1.5" opacity="0.8"/>
         <line x1="50" y1="28" x2="50" y2="36" stroke="#00e5ff" stroke-width="1.5" opacity="0.8"/>
@@ -197,7 +162,6 @@
     <div class="loading-text" id="loading-text">MEMUAT SISTEM...</div>
   </div>
 
-  <!-- ── Start Screen (tap to begin) ── -->
   <div id="start-screen" class="hidden">
     <div id="start-icon">🧠</div>
     <div id="start-title">Mind Scan AR</div>
@@ -205,15 +169,8 @@
     <button id="start-btn">Ketuk untuk Mulai</button>
   </div>
 
-  <!-- ── Error ── -->
   <div id="error-msg"></div>
 
-  <!-- ════════════════════════════════════
-       A-FRAME SCENE
-       mindar-image-aframe.prod.js sudah
-       include Three.js & GLTFLoader.
-       TIDAK perlu script tambahan.
-  ════════════════════════════════════ -->
   <a-scene
     mindar-image="imageTargetSrc: https://btconsultingtest.s3.us-east-2.amazonaws.com/v/ordertargets.mind; autoStart: false; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;"
     color-space="sRGB"
@@ -222,7 +179,6 @@
     device-orientation-permission-ui="enabled: false">
 
     <a-assets>
-      <!-- Audio untuk 12 target -->
       <audio id="a0"  src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/0.mp3"  preload="none" crossorigin="anonymous"></audio>
       <audio id="a1"  src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/1.mp3"  preload="none" crossorigin="anonymous"></audio>
       <audio id="a2"  src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/2.mp3"  preload="none" crossorigin="anonymous"></audio>
@@ -236,7 +192,6 @@
       <audio id="a10" src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/10.mp3" preload="none" crossorigin="anonymous"></audio>
       <audio id="a11" src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/11.mp3" preload="none" crossorigin="anonymous"></audio>
 
-      <!-- GLB models untuk 12 target -->
       <a-asset-item id="m0"  src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/0.glb"></a-asset-item>
       <a-asset-item id="m1"  src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/1.glb"></a-asset-item>
       <a-asset-item id="m2"  src="https://btconsultingtest.s3.us-east-2.amazonaws.com/v/2.glb"></a-asset-item>
@@ -253,75 +208,50 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Target 0: Neuron Synaptik -->
     <a-entity mindar-image-target="targetIndex: 0">
       <a-gltf-model src="#m0" position="0 0 0" scale="1 1 1" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 1: Korteks Serebral -->
     <a-entity mindar-image-target="targetIndex: 1">
       <a-gltf-model src="#m1" position="0 0.05 0" scale="1.2 1.2 1.2" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 2: Hipokampus -->
     <a-entity mindar-image-target="targetIndex: 2">
       <a-gltf-model src="#m2" position="0 0 0" scale="0.9 0.9 0.9" rotation="0 45 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 3: Amigdala -->
     <a-entity mindar-image-target="targetIndex: 3">
       <a-gltf-model src="#m3" position="0 0 0" scale="1 1 1" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 4: Otak Kecil -->
     <a-entity mindar-image-target="targetIndex: 4">
       <a-gltf-model src="#m4" position="0 -0.05 0" scale="1.1 1.1 1.1" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 5: Batang Otak -->
     <a-entity mindar-image-target="targetIndex: 5">
       <a-gltf-model src="#m5" position="0 0 0" scale="0.8 0.8 0.8" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 6: Lobus Frontal -->
     <a-entity mindar-image-target="targetIndex: 6">
       <a-gltf-model src="#m6" position="0 0 0" scale="1 1 1" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 7: Talamus -->
     <a-entity mindar-image-target="targetIndex: 7">
       <a-gltf-model src="#m7" position="0 0 0" scale="1 1 1" rotation="0 30 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 8: Korpus Kalosum -->
     <a-entity mindar-image-target="targetIndex: 8">
       <a-gltf-model src="#m8" position="0 0.1 0" scale="1.3 1.3 1.3" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 9: Hipotalamus -->
     <a-entity mindar-image-target="targetIndex: 9">
       <a-gltf-model src="#m9" position="0 0 0" scale="0.9 0.9 0.9" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 10: Kelenjar Pineal -->
     <a-entity mindar-image-target="targetIndex: 10">
       <a-gltf-model src="#m10" position="0 0 0" scale="1 1 1" rotation="0 0 0"></a-gltf-model>
     </a-entity>
-
-    <!-- Target 11: Ventrikel Otak -->
     <a-entity mindar-image-target="targetIndex: 11">
       <a-gltf-model src="#m11" position="0 0 0" scale="1.2 1.2 1.2" rotation="0 0 0"></a-gltf-model>
     </a-entity>
 
   </a-scene>
 
-  <!-- ── HUD Overlay ── -->
   <div id="hud">
     <div class="corner corner-tl"></div>
     <div class="corner corner-tr"></div>
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
-
     <div id="hud-top">
       <div id="hud-title">Mind Scan AR</div>
       <div id="hud-status">
@@ -329,9 +259,7 @@
         <span id="status-text">SCANNING</span>
       </div>
     </div>
-
     <div id="target-counter">TARGET<br><span id="target-num">—</span></div>
-
     <div id="scan-ring">
       <svg viewBox="0 0 180 180" fill="none">
         <circle cx="90" cy="90" r="85" stroke="#4fc3f7" stroke-width="1"   stroke-dasharray="12 6" opacity="0.3"/>
@@ -343,7 +271,6 @@
       </svg>
       <div class="scan-label">Arahkan ke target</div>
     </div>
-
     <div id="info-panel">
       <div id="info-label">TARGET 01 / 12</div>
       <div id="info-title">Nama Objek</div>
@@ -361,230 +288,212 @@
         </div>
       </div>
     </div>
-
     <div id="toast">TARGET TERDETEKSI</div>
   </div>
 
   <script>
-    /* ============================================================
-       KONFIGURASI 12 TARGET
-    ============================================================ */
     var TARGETS = [
-      { id:0,  label:"TARGET 01", title:"Neuron Synaptik",   desc:"Sel saraf yang mengirimkan sinyal listrik dan kimia ke seluruh sistem otak." },
-      { id:1,  label:"TARGET 02", title:"Korteks Serebral",  desc:"Lapisan terluar otak besar yang bertanggung jawab atas pemikiran tingkat tinggi." },
-      { id:2,  label:"TARGET 03", title:"Hipokampus",        desc:"Pusat memori jangka panjang dan navigasi spasial di dalam sistem limbik." },
-      { id:3,  label:"TARGET 04", title:"Amigdala",          desc:"Pusat pemrosesan emosi, terutama rasa takut dan respons terhadap bahaya." },
-      { id:4,  label:"TARGET 05", title:"Otak Kecil",        desc:"Serebelum yang mengatur keseimbangan, koordinasi gerak, dan presisi motorik." },
-      { id:5,  label:"TARGET 06", title:"Batang Otak",       desc:"Mengontrol fungsi vital seperti pernapasan, detak jantung, dan siklus tidur." },
-      { id:6,  label:"TARGET 07", title:"Lobus Frontal",     desc:"Pusat perencanaan, pengambilan keputusan, dan kepribadian manusia." },
-      { id:7,  label:"TARGET 08", title:"Talamus",           desc:"Gerbang relai sensorik yang meneruskan informasi ke area korteks yang tepat." },
-      { id:8,  label:"TARGET 09", title:"Korpus Kalosum",    desc:"Jembatan serat saraf yang menghubungkan belahan otak kiri dan kanan." },
-      { id:9,  label:"TARGET 10", title:"Hipotalamus",       desc:"Mengatur suhu tubuh, rasa lapar, haus, dan ritme sirkadian harian." },
-      { id:10, label:"TARGET 11", title:"Kelenjar Pineal",   desc:"Menghasilkan melatonin yang mengatur siklus tidur dan jam biologis tubuh." },
-      { id:11, label:"TARGET 12", title:"Ventrikel Otak",    desc:"Rongga berisi cairan serebrospinal yang melindungi dan menutrisi otak." }
+      { id:0,  label:'TARGET 01', title:'Neuron Synaptik',  desc:'Sel saraf yang mengirimkan sinyal listrik dan kimia ke seluruh sistem otak.' },
+      { id:1,  label:'TARGET 02', title:'Korteks Serebral', desc:'Lapisan terluar otak besar yang bertanggung jawab atas pemikiran tingkat tinggi.' },
+      { id:2,  label:'TARGET 03', title:'Hipokampus',       desc:'Pusat memori jangka panjang dan navigasi spasial di dalam sistem limbik.' },
+      { id:3,  label:'TARGET 04', title:'Amigdala',         desc:'Pusat pemrosesan emosi, terutama rasa takut dan respons terhadap bahaya.' },
+      { id:4,  label:'TARGET 05', title:'Otak Kecil',       desc:'Serebelum yang mengatur keseimbangan, koordinasi gerak, dan presisi motorik.' },
+      { id:5,  label:'TARGET 06', title:'Batang Otak',      desc:'Mengontrol fungsi vital seperti pernapasan, detak jantung, dan siklus tidur.' },
+      { id:6,  label:'TARGET 07', title:'Lobus Frontal',    desc:'Pusat perencanaan, pengambilan keputusan, dan kepribadian manusia.' },
+      { id:7,  label:'TARGET 08', title:'Talamus',          desc:'Gerbang relai sensorik yang meneruskan informasi ke area korteks yang tepat.' },
+      { id:8,  label:'TARGET 09', title:'Korpus Kalosum',   desc:'Jembatan serat saraf yang menghubungkan belahan otak kiri dan kanan.' },
+      { id:9,  label:'TARGET 10', title:'Hipotalamus',      desc:'Mengatur suhu tubuh, rasa lapar, haus, dan ritme sirkadian harian.' },
+      { id:10, label:'TARGET 11', title:'Kelenjar Pineal',  desc:'Menghasilkan melatonin yang mengatur siklus tidur dan jam biologis tubuh.' },
+      { id:11, label:'TARGET 12', title:'Ventrikel Otak',   desc:'Rongga berisi cairan serebrospinal yang melindungi dan menutrisi otak.' }
     ];
 
-    /* ============================================================
-       STATE
-    ============================================================ */
     var activeId     = -1;
     var isPlaying    = false;
     var currentAudio = null;
+    var toastTimer   = null;
 
-    /* ============================================================
-       ELEMENTS
-    ============================================================ */
-    var sceneEl     = document.querySelector('a-scene');
-    var loadingEl   = document.getElementById('loading-screen');
-    var startEl     = document.getElementById('start-screen');
-    var startBtn    = document.getElementById('start-btn');
-    var hudEl       = document.getElementById('hud');
-    var errorEl     = document.getElementById('error-msg');
-    var loadingBar  = document.getElementById('loading-bar');
-    var loadingTxt  = document.getElementById('loading-text');
+    var sceneEl    = document.querySelector('a-scene');
+    var loadingEl  = document.getElementById('loading-screen');
+    var startEl    = document.getElementById('start-screen');
+    var startBtn   = document.getElementById('start-btn');
+    var hudEl      = document.getElementById('hud');
+    var errorEl    = document.getElementById('error-msg');
+    var loadingBar = document.getElementById('loading-bar');
+    var loadingTxt = document.getElementById('loading-text');
 
-    /* ============================================================
-       LOADING PROGRESS (simulasi visual saat aset dimuat)
-    ============================================================ */
-    var progress = 0;
-    var progressTimer = setInterval(function() {
-      progress = Math.min(progress + Math.random() * 8, 85);
-      loadingBar.style.width = progress + '%';
-      if (progress < 30)      loadingTxt.textContent = 'MEMUAT SKRIP AR...';
-      else if (progress < 60) loadingTxt.textContent = 'MEMUAT ASET 3D...';
-      else                    loadingTxt.textContent = 'MENYIAPKAN KAMERA...';
+    /* ── Loading progress animation ── */
+    var pct = 0;
+    var pTimer = setInterval(function () {
+      pct = Math.min(pct + Math.random() * 8, 85);
+      loadingBar.style.width = pct + '%';
+      if (pct < 30)      loadingTxt.textContent = 'MEMUAT SKRIP AR...';
+      else if (pct < 60) loadingTxt.textContent = 'MEMUAT ASET 3D...';
+      else               loadingTxt.textContent = 'MENYIAPKAN KAMERA...';
     }, 300);
 
-    /* ============================================================
-       SCENE LOADED → tampilkan start screen
-    ============================================================ */
-    sceneEl.addEventListener('loaded', function() {
-      clearInterval(progressTimer);
+    /* ── Scene loaded ── */
+    sceneEl.addEventListener('loaded', function () {
+      clearInterval(pTimer);
       loadingBar.style.width = '100%';
       loadingTxt.textContent = 'SIAP!';
-      setTimeout(function() {
+
+      /*
+       * FIX 1: Bind target events DI SINI, setelah scene loaded.
+       * MindAR baru mendaftarkan komponen mindar-image-target
+       * setelah event 'loaded' — binding lebih awal tidak akan
+       * menangkap targetFound/targetLost sama sekali.
+       */
+      _bindTargets();
+
+      setTimeout(function () {
         loadingEl.classList.add('hidden');
-        setTimeout(function() {
+        setTimeout(function () {
           loadingEl.style.display = 'none';
           startEl.classList.remove('hidden');
         }, 900);
       }, 500);
     });
 
-    /* ============================================================
-       START BUTTON → minta izin kamera lalu mulai MindAR
-    ============================================================ */
-    startBtn.addEventListener('click', async function() {
+    sceneEl.addEventListener('arError', function (e) {
+      _showError('AR Error: ' + (e.detail || 'Unknown'));
+    });
+
+    /* ── Bind target events ── */
+    function _bindTargets() {
+      var els = document.querySelectorAll('[mindar-image-target]');
+
+      els.forEach(function (el) {
+        /*
+         * FIX 2: Baca targetIndex via komponen A-Frame, bukan parse string.
+         * el.components['mindar-image-target'].data.targetIndex
+         * selalu integer, tidak terpengaruh format string atau spasi.
+         */
+        var comp = el.components && el.components['mindar-image-target'];
+        var idx  = comp ? comp.data.targetIndex : _parseIndex(el);
+        var t    = TARGETS[idx];
+        if (!t) return;
+
+        el.addEventListener('targetFound', function () { _onFound(t); });
+        el.addEventListener('targetLost',  function () { _onLost(t);  });
+      });
+    }
+
+    /* Fallback parser jika komponen belum ready */
+    function _parseIndex(el) {
+      var attr  = el.getAttribute('mindar-image-target') || '';
+      var match = attr.match(/targetIndex\s*:\s*(\d+)/i);
+      return match ? parseInt(match[1], 10) : -1;
+    }
+
+    /* ── Start button ── */
+    startBtn.addEventListener('click', function () {
       startBtn.textContent = 'Memulai...';
-      startBtn.disabled = true;
+      startBtn.disabled    = true;
 
-      try {
-        await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-      } catch(e) {
-        showError('Akses kamera ditolak. Izinkan kamera di pengaturan browser.');
-        startBtn.textContent = 'Coba Lagi';
-        startBtn.disabled = false;
-        return;
-      }
-
-      startEl.classList.add('hidden');
-      hudEl.classList.add('visible');
-
-      try {
-        await sceneEl.systems['mindar-image-system'].start();
-      } catch(e) {
-        showError('Gagal memulai AR: ' + e.message);
-      }
+      /*
+       * FIX 3: Tidak pakai async/await — gunakan Promise chain
+       * agar kompatibel dengan semua mobile browser termasuk
+       * WebView Android lama yang belum support async/await penuh.
+       */
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+        .then(function () {
+          startEl.classList.add('hidden');
+          hudEl.classList.add('visible');
+          return sceneEl.systems['mindar-image-system'].start();
+        })
+        .catch(function (e) {
+          _showError(
+            e.name === 'NotAllowedError'
+              ? 'Akses kamera ditolak. Izinkan kamera di pengaturan browser.'
+              : 'Gagal memulai AR: ' + e.message
+          );
+          startBtn.textContent = 'Coba Lagi';
+          startBtn.disabled    = false;
+        });
     });
 
-    /* ============================================================
-       TARGET EVENTS
-    ============================================================ */
-    var targetEls = document.querySelectorAll('[mindar-image-target]');
-
-    targetEls.forEach(function(el) {
-      var idx = parseInt(el.getAttribute('mindar-image-target').replace('targetIndex: ', ''));
-      var t   = TARGETS[idx];
-
-      el.addEventListener('targetFound', function() {
-        onFound(t);
-      });
-      el.addEventListener('targetLost', function() {
-        onLost(t);
-      });
-    });
-
-    function onFound(t) {
+    /* ── Target found / lost ── */
+    function _onFound(t) {
       activeId = t.id;
-
-      /* HUD */
       document.getElementById('status-dot').classList.add('active');
       document.getElementById('status-text').textContent = 'TARGET AKTIF';
       document.getElementById('scan-ring').classList.add('hidden');
-      document.getElementById('target-num').textContent = String(t.id + 1).padStart(2, '0');
-      document.getElementById('info-label').textContent = t.label + ' / 12';
-      document.getElementById('info-title').textContent = t.title;
-      document.getElementById('info-desc').textContent  = t.desc;
+      document.getElementById('target-num').textContent  = String(t.id + 1).padStart(2, '0');
+      document.getElementById('info-label').textContent  = t.label + ' / 12';
+      document.getElementById('info-title').textContent  = t.title;
+      document.getElementById('info-desc').textContent   = t.desc;
       document.getElementById('info-panel').classList.add('visible');
-
-      showToast('✦ ' + t.title.toUpperCase() + ' TERDETEKSI');
-
-      /* Audio */
-      stopCurrentAudio();
+      _showToast('✦ ' + t.title.toUpperCase() + ' TERDETEKSI');
+      _stopAudio();
       currentAudio = document.getElementById('a' + t.id);
-      playAudio(currentAudio);
+      _playAudio(currentAudio);
     }
 
-    function onLost(t) {
+    function _onLost(t) {
       if (activeId !== t.id) return;
       activeId = -1;
-
       document.getElementById('status-dot').classList.remove('active');
       document.getElementById('status-text').textContent = 'SCANNING';
       document.getElementById('scan-ring').classList.remove('hidden');
       document.getElementById('info-panel').classList.remove('visible');
-      document.getElementById('target-num').textContent = '—';
-
-      stopCurrentAudio();
+      document.getElementById('target-num').textContent  = '—';
+      _stopAudio();
     }
 
-    /* ============================================================
-       AUDIO
-    ============================================================ */
-    function playAudio(audio) {
+    /* ── Audio ── */
+    function _playAudio(audio) {
       if (!audio) return;
       audio.currentTime = 0;
-      var promise = audio.play();
-      if (promise !== undefined) {
-        promise.then(function() {
-          setPlayState(true);
-        }).catch(function() {
-          /* Autoplay diblokir browser — tetap tampilkan tombol play */
-          setPlayState(false);
-        });
+      var p = audio.play();
+      if (p !== undefined) {
+        p.then(function ()  { _setPlay(true);  })
+         .catch(function () { _setPlay(false); });
       }
     }
 
-    function stopCurrentAudio() {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-      }
+    function _stopAudio() {
+      if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
       currentAudio = null;
-      setPlayState(false);
+      _setPlay(false);
     }
 
-    function setPlayState(playing) {
-      isPlaying = playing;
-      document.getElementById('icon-play').style.display  = playing ? 'none'   : 'inline';
-      document.getElementById('icon-pause').style.display = playing ? 'inline' : 'none';
-      document.getElementById('btn-label').textContent    = playing ? 'PAUSE'  : 'PLAY AUDIO';
-      document.querySelectorAll('.wb').forEach(function(b) {
-        if (playing) b.classList.add('on');
-        else         b.classList.remove('on');
+    function _setPlay(on) {
+      isPlaying = on;
+      document.getElementById('icon-play').style.display  = on ? 'none'   : 'inline';
+      document.getElementById('icon-pause').style.display = on ? 'inline' : 'none';
+      document.getElementById('btn-label').textContent    = on ? 'PAUSE'  : 'PLAY AUDIO';
+      document.querySelectorAll('.wb').forEach(function (b) {
+        on ? b.classList.add('on') : b.classList.remove('on');
       });
     }
 
-    document.getElementById('btn-audio').addEventListener('click', function() {
-      if (activeId < 0) {
-        showToast('Arahkan kamera ke image target terlebih dahulu');
-        return;
-      }
-      if (!currentAudio) {
-        currentAudio = document.getElementById('a' + activeId);
-      }
+    document.getElementById('btn-audio').addEventListener('click', function () {
+      if (activeId < 0) { _showToast('Arahkan kamera ke image target terlebih dahulu'); return; }
+      if (!currentAudio) currentAudio = document.getElementById('a' + activeId);
       if (isPlaying) {
-        currentAudio.pause();
-        setPlayState(false);
+        currentAudio.pause(); _setPlay(false);
       } else {
-        currentAudio.play().then(function() { setPlayState(true); }).catch(function(e) { console.warn(e); });
+        currentAudio.play()
+          .then(function ()  { _setPlay(true); })
+          .catch(function (e) { console.warn(e); });
       }
     });
 
-    /* ============================================================
-       TOAST
-    ============================================================ */
-    var toastTimer;
-    function showToast(msg) {
-      var t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
+    /* ── Toast ── */
+    function _showToast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2800);
+      toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2800);
     }
 
-    /* ============================================================
-       ERROR
-    ============================================================ */
-    function showError(msg) {
+    /* ── Error ── */
+    function _showError(msg) {
       errorEl.style.display = 'block';
-      errorEl.textContent = msg;
+      errorEl.textContent   = msg;
+      console.error(msg);
     }
-
-    sceneEl.addEventListener('arError', function(e) {
-      showError('AR Error: ' + (e.detail || 'Unknown'));
-    });
-
   </script>
 </body>
 </html>
