@@ -351,14 +351,16 @@
 
 <!-- ===== DEPENDENCIES ===== -->
 
- <!-- 1. Three.js standalone PERTAMA -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-
-  <!-- 2. GLTFLoader -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-  <!-- 3. MindAR - pakai versi yang cocok dengan Three.js r128 -->
+  <!-- 1. MindAR -->
   <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+
+  <!-- 2. Expose THREE ke global dari MindAR -->
+  <script>
+    window.THREE = window.MINDAR.IMAGE.THREE;
+  </script>
+
+  <!-- 3. GLTFLoader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <!-- 4. Howler.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
