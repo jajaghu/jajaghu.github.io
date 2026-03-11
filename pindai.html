@@ -378,11 +378,10 @@
 
   <!-- ===== DEPENDENCIES ===== -->
   <!-- MindAR Image Tracking -->
-  <script src="https://unpkg.com/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
-  <!-- Three.js (bundled with MindAR but also standalone) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <!-- GLTF Loader -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<!-- MindAR SETELAH Three.js -->
+<script src="https://unpkg.com/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
   <!-- Howler.js for audio -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 </head>
@@ -499,6 +498,6 @@
   <!-- ═══════════════════════════════════════
        APP SCRIPT (loaded after HTML ready)
   ═══════════════════════════════════════ -->
- <script type="module" src="https://jajaghu.infinityfree.me/app.js"></script>
+<script src="https://jajaghu.infinityfree.me/proxy.php?file=js/app.js"></script>
 </body>
 </html>
