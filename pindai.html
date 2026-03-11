@@ -349,18 +349,13 @@
        URUTAN WAJIB: Three.js → GLTFLoader → MindAR → Howler → app.js
   ========================== -->
 
-  <!-- 1. Three.js PERTAMA -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-  <!-- 2. GLTFLoader -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-  <!-- 3. MindAR - versi 1.1.4 paling stabil tanpa import error -->
+<!-- 1. MindAR - sudah include Three.js di dalamnya -->
   <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
 
-  <!-- 4. Howler.js -->
+  <!-- 2. Howler.js untuk audio -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 
+ 
 </head>
 
 <body>
@@ -449,7 +444,7 @@
 
   </div>
 
-  <!-- 5. app.js PALING TERAKHIR lewat proxy -->
+ <!-- 3. app.js PALING TERAKHIR -->
   <script src="https://jajaghu.infinityfree.me/proxy.php?file=js/app.js"></script>
 
 </body>
