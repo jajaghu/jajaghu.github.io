@@ -80,7 +80,7 @@ var AR_CONFIG = {
       label: "TARGET 06",
       title: "Batang Otak",
       desc: "Mengontrol fungsi vital seperti pernapasan, detak jantung, dan siklus tidur.",
-      model: "models/5.glb",
+      model: "https://btconsultingtest.s3.us-east-2.amazonaws.com/v/5.glb",
       modelScale: [0.8, 0.8, 0.8],
       modelPosition: [0, 0, 0],
       modelRotation: [0, 0, 0],
