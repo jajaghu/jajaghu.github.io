@@ -454,12 +454,19 @@
 
  <!-- 3. app.js PALING TERAKHIR -->
   <script src="https://jajaghu.infinityfree.me/proxy.php?file=js/app.js"></script>
-  <script>
-    console.log('=== DEBUG ===');
-    console.log('window.THREE:', typeof window.THREE);
-    console.log('window.MINDAR:', typeof window.MINDAR);
-    console.log('MINDAR keys:', window.MINDAR ? Object.keys(window.MINDAR) : 'tidak ada');
-    console.log('MINDAR.IMAGE keys:', window.MINDAR && window.MINDAR.IMAGE ? Object.keys(window.MINDAR.IMAGE) : 'tidak ada');
-  </script>
+<script>
+  // Test apakah MindAR tersedia
+  console.log('MindARThree:', typeof window.MINDAR.IMAGE.MindARThree);
+  
+  // Test kamera manual
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(function(stream) {
+      console.log('KAMERA OK:', stream);
+      stream.getTracks().forEach(t => t.stop());
+    })
+    .catch(function(err) {
+      console.error('KAMERA ERROR:', err.name, err.message);
+    });
+</script>
 </body>
 </html>
