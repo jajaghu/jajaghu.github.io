@@ -351,18 +351,16 @@
 
 <!-- ===== DEPENDENCIES ===== -->
 
-  <!-- 1. MindAR - sudah include Three.js di dalamnya -->
-  <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+ <!-- 1. Three.js standalone PERTAMA -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
-  <!-- 2. Expose THREE ke global window agar GLTFLoader bisa akses -->
-  <script>
-    window.THREE = window.MINDAR && window.MINDAR.THREE ? window.MINDAR.THREE : THREE;
-  </script>
-
-  <!-- 3. GLTFLoader -->
+  <!-- 2. GLTFLoader -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-  <!-- 4. Howler.js untuk audio -->
+  <!-- 3. MindAR - pakai versi yang cocok dengan Three.js r128 -->
+  <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+
+  <!-- 4. Howler.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 </head>
 
