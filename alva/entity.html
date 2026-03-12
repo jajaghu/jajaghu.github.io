@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>AlvaAR — Fabel Bangau</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root{ --gold:#c9a84c; --teal:#4ecdc4; }
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    body{ background:#000; overflow:hidden; font-family:'Crimson Text',serif; }
+    #container{ position:fixed; inset:0; }
+
+    /* overlay UI */
+    #ui{ position:fixed; inset:0; pointer-events:none; z-index:100; }
+
+    #top-bar{
+      position:absolute; top:0; left:0; right:0; padding:14px 20px;
+      background:linear-gradient(180deg,rgba(0,0,0,0.75) 0%,transparent 100%);
+      display:flex; align-items:center; justify-content:space-between; pointer-events:auto;
+    }
+    #back-btn{
+      background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.4);
+      color:var(--gold); font-family:'Cinzel',serif; font-size:11px; letter-spacing:2px;
+      padding:7px 16px; border-radius:2px; cursor:pointer; transition:all 0.2s;
+    }
+    #back-btn:hover{ background:rgba(201,168,76,0.25); }
+    #scene-badge{
+      font-family:'Cinzel',serif; font-size:11px; color:var(--teal);
+      letter-spacing:3px; text-transform:uppercase;
+    }
+    #tracking-badge{
+      font-size:10px; color:rgba(255,255,255,0.4); letter-spacing:2px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .tdot{ width:6px; height:6px; border-radius:50%; background:#ff5252; }
+    .tdot.tracking{ background:#69f0ae; animation:pulse 1.5s infinite; }
+    @keyframes pulse{ 0%,100%{opacity:1}50%{opacity:0.3} }
+
+    #info-bottom{
+      position:absolute; bottom:0; left:0; right:0; padding:18px 22px 30px;
+      background:linear-gradient(0deg,rgba(6,14,11,0.92) 0%,transparent 100%);
+    }
+    #scene-label{ font-family:'Cinzel',serif; font-size:10px; color:var(--teal); letter-spacing:3px; margin-bottom:4px; }
+    #scene-title{ font-family:'Cinzel',serif; font-size:20px; color:var(--gold); margin-bottom:8px; }
+    #scene-desc{ font-size:14px; color:rgba(255,255,255,0.72); line-height:1.65; font-style:italic; max-width:500px; }
+
+    /* particle mode toggle */
+    #fx-bar{
+      position:absolute; bottom:140px; right:16px;
+      display:flex; flex-direction:column; gap:8px; pointer-events:auto;
+    }
+    .fx-btn{
+      background:rgba(0,0,0,0.5); border:1px solid rgba(201,168,76,0.3);
+      color:rgba(201,168,76,0.7); font-size:16px; width:42px; height:42px;
+      border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all 0.2s; backdrop-filter:blur(6px);
+    }
+    .fx-btn:hover,.fx-btn.active{
+      background:rgba(201,168,76,0.18); border-color:var(--gold); color:var(--gold);
+      box-shadow:0 0 12px rgba(201,168,76,0.3);
+    }
+
+    /* status / init */
+    #init-overlay{
+      position:fixed; inset:0; background:linear-gradient(160deg,#060e0b,#0d1a14);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200;
+    }
+    #init-overlay.hidden{ display:none; }
+    .init-bird{ font-size:64px; margin-bottom:20px; animation:birdFloat 3s ease-in-out infinite; }
+    @keyframes birdFloat{ 0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(3deg)} }
+    .init-title{ font-family:'Cinzel',serif; font-size:16px; color:var(--gold); letter-spacing:4px; margin-bottom:6px; }
+    .init-sub{ font-size:13px; color:rgba(78,205,196,0.7); letter-spacing:2px; font-style:italic; margin-bottom:30px; }
+    #init-btn{
+      background:rgba(78,205,196,0.12); border:1px solid rgba(78,205,196,0.4);
+      color:var(--teal); font-family:'Cinzel',serif; font-size:12px; letter-spacing:3px;
+      padding:12px 32px; border-radius:2px; cursor:pointer; transition:all 0.2s;
+    }
+    #init-btn:hover{ background:rgba(78,205,196,0.25); box-shadow:0 0 16px rgba(78,205,196,0.25); }
+    #error-box{ color:#ff5252; font-size:13px; margin-top:16px; text-align:center; display:none; }
+  </style>
+</head>
+<body>
+
+<!-- INIT OVERLAY -->
+<div id="init-overlay">
+  <div class="init-bird">🕊️</div>
+  <div class="init-title">AlvaAR — Fabel Bangau</div>
+  <div class="init-sub" id="init-scene-name">Memuat adegan...</div>
+  <button id="init-btn">Aktifkan Kamera AR</button>
+  <div id="error-box"></div>
+</div>
+
+<div id="container"></div>
+
+<div id="ui">
+  <div id="top-bar">
+    <button id="back-btn" onclick="history.back()">← Kembali</button>
+    <div id="scene-badge">ALVA AR</div>
+    <div id="tracking-badge"><div class="tdot" id="tdot"></div><span id="ttext">INIT</span></div>
+  </div>
+
+  <div id="fx-bar">
+    <button class="fx-btn active" title="Halo"  onclick="setFX('halo')"  >⬡</button>
+    <button class="fx-btn"        title="Orbs"  onclick="setFX('orbs')"  >◎</button>
+    <button class="fx-btn"        title="Aura"  onclick="setFX('aura')"  >✦</button>
+    <button class="fx-btn"        title="Storm" onclick="setFX('storm')" >⌘</button>
+  </div>
+
+  <div id="info-bottom">
+    <div id="scene-label">ADEGAN — / 12</div>
+    <div id="scene-title">—</div>
+    <div id="scene-desc">—</div>
+  </div>
+</div>
+
+<!-- Three.js r128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── SCENE DATA ─────────────────────────────────────────────────
+var SCENES = [
+  { id:0,  label:'ADEGAN 01', title:'Dusta di Balik Sayap Putih',   desc:'Di tepi Telaga Malini, Bangi sang bangau tua berdiri diam berpura-pura bertapa — seolah makhluk paling suci di hutan itu.' },
+  { id:1,  label:'ADEGAN 02', title:'Nila yang Penasaran',           desc:'Nila, ikan kecil yang penasaran, berenang mendekat. "Tuan Bangau, mengapa tidak berburu hari ini?" tanya Nila dengan suara gemetar.' },
+  { id:2,  label:'ADEGAN 03', title:'Ramalan Palsu',                 desc:'"Aku bermimpi telaga ini akan kering," kata Bangi dengan nada dibuat-buat lembut. "Hatiku hancur memikirkan nasib kalian semua."' },
+  { id:3,  label:'ADEGAN 04', title:'Tawaran yang Memikat',          desc:'Bangi menawarkan solusi — sebuah telaga rahasia yang airnya selalu melimpah. Dia bersedia membawa ikan-ikan satu per satu di paruhnya.' },
+  { id:4,  label:'ADEGAN 05', title:'Nila Terbang Bersama Bangi',    desc:'Nila setuju. Bangi menjepit Nila di paruhnya dan terbang tinggi. Nila merasa beruntung, membayangkan rumah baru yang indah.' },
+  { id:5,  label:'ADEGAN 06', title:'Bukit Batu yang Gersang',       desc:'Bangi mendarat di bukit batu jauh dari air. Tanpa rasa kasihan, dia melahap Nila — lalu beristirahat sebelum mencari korban berikutnya.' },
+  { id:6,  label:'ADEGAN 07', title:'Hari-Hari Penipuan',            desc:'Berhari-hari Bangi melakukan tipu muslihat hingga ikan-ikan semakin sedikit. Keta sang ketam mulai merasakan sesuatu yang ganjil.' },
+  { id:7,  label:'ADEGAN 08', title:'Keta yang Cerdik',              desc:'"Bolehkah aku berpegangan pada lehermu dengan capitku?" pinta Keta. Bangi yang serakah setuju, membayangkan daging ketam yang lezat.' },
+  { id:8,  label:'ADEGAN 09', title:'Tulang-Tulang di Bukit Batu',   desc:'Di atas bukit, Keta melihat sisa tulang ikan berserakan. Dia sadar bahwa Bangi telah membohongi seluruh penghuni telaga.' },
+  { id:9,  label:'ADEGAN 10', title:'Konfrontasi di Udara',          desc:'"Tidak ada telaga baru!" seru Bangi tertawa. "Bukit batu ini meja makanku, dan kau adalah hidangan penutupnya!"' },
+  { id:10, label:'ADEGAN 11', title:'Keadilan Sang Ketam',           desc:'Keta mengapit leher Bangi dengan capit yang kuat. Bangi meronta-ronta tapi Keta tak melepas — sang penipu akhirnya jatuh tersungkur.' },
+  { id:11, label:'ADEGAN 12', title:'Kata Bijak',                    desc:'"Kebenaran tidak bisa disembunyikan selamanya. Orang yang membangun kepercayaan di atas kebohongan akan tersungkur oleh tipu muslihatnya sendiri."' }
+];
+
+// ── GET SCENE ID FROM URL ──────────────────────────────────────
+var params = new URLSearchParams(location.search);
+var sceneId = parseInt(params.get('id') || '0', 10);
+var S = SCENES[sceneId] || SCENES[0];
+
+// populate UI
+document.getElementById('init-scene-name').textContent  = S.label + ' — ' + S.title;
+document.getElementById('scene-label').textContent       = S.label + ' / 12';
+document.getElementById('scene-title').textContent       = S.title;
+document.getElementById('scene-desc').textContent        = S.desc;
+
+// ── THREE.JS SETUP ─────────────────────────────────────────────
+var renderer, scene, camera, clock;
+var entityGroup, particles = {}, fxMode = 'halo';
+var videoEl, videoTex;
+var isTracking = false;
+var rotX = 0, rotY = 0, isDrag = false, px = 0, py = 0;
+
+function initThree(stream) {
+  // video background
+  videoEl = document.createElement('video');
+  videoEl.srcObject = stream;
+  videoEl.setAttribute('playsinline','');
+  videoEl.setAttribute('autoplay','');
+  videoEl.muted = true;
+  videoEl.play();
+
+  var W = window.innerWidth, H = window.innerHeight;
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(W, H);
+  renderer.autoClear = false;
+  document.getElementById('container').appendChild(renderer.domElement);
+
+  scene  = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, W/H, 0.01, 100);
+  camera.position.set(0,0,3.5);
+  clock  = new THREE.Clock();
+
+  // video background plane
+  videoTex = new THREE.VideoTexture(videoEl);
+  var bgScene  = new THREE.Scene();
+  var bgCam    = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  var bgGeo    = new THREE.PlaneGeometry(2,2);
+  var bgMat    = new THREE.MeshBasicMaterial({ map: videoTex, depthWrite:false });
+  bgScene.add(new THREE.Mesh(bgGeo, bgMat));
+
+  // lighting
+  scene.add(new THREE.AmbientLight(0x334455,2));
+  var p1 = new THREE.PointLight(0xc9a84c,4,20); p1.position.set(3,3,3); scene.add(p1);
+  var p2 = new THREE.PointLight(0x4ecdc4,2,20); p2.position.set(-3,-2,2); scene.add(p2);
+
+  // entity group (placeholder while GLB loads)
+  entityGroup = new THREE.Group();
+  scene.add(entityGroup);
+  buildPlaceholder();
+
+  // particles
+  buildAllFX();
+  Object.values(particles).forEach(function(s){ s.group.visible=false; scene.add(s.group); });
+  particles[fxMode].group.visible = true;
+
+  // load GLB
+  loadGLTF();
+
+  // simulate tracking (world-AR stub — always "tracking" after init)
+  setTimeout(function(){
+    isTracking = true;
+    document.getElementById('tdot').classList.add('tracking');
+    document.getElementById('ttext').textContent = 'TRACKING';
+  }, 1500);
+
+  // mouse / touch
+  var c = renderer.domElement;
+  c.addEventListener('mousedown', function(e){ isDrag=true; px=e.clientX; py=e.clientY; });
+  c.addEventListener('mouseup',   function(){ isDrag=false; });
+  c.addEventListener('mousemove', function(e){ if(!isDrag)return; rotY+=(e.clientX-px)*0.005; rotX+=(e.clientY-py)*0.005; px=e.clientX; py=e.clientY; });
+  c.addEventListener('touchstart',function(e){ isDrag=true; px=e.touches[0].clientX; py=e.touches[0].clientY; });
+  c.addEventListener('touchend',  function(){ isDrag=false; });
+  c.addEventListener('touchmove', function(e){ if(!isDrag)return; rotY+=(e.touches[0].clientX-px)*0.005; rotX+=(e.touches[0].clientY-py)*0.005; px=e.touches[0].clientX; py=e.touches[0].clientY; });
+  c.addEventListener('wheel', function(e){ camera.position.z=Math.max(1.5,Math.min(8,camera.position.z+e.deltaY*0.005)); });
+
+  window.addEventListener('resize', function(){
+    var W=window.innerWidth,H=window.innerHeight;
+    camera.aspect=W/H; camera.updateProjectionMatrix();
+    renderer.setSize(W,H);
+  });
+
+  // render loop
+  (function loop(){
+    requestAnimationFrame(loop);
+    var t = clock.getElapsedTime();
+    renderer.clear();
+    renderer.render(bgScene, bgCam);
+    renderer.clearDepth();
+    if(isTracking){
+      entityGroup.rotation.y = rotY + t*0.25;
+      entityGroup.rotation.x = rotX;
+      Object.values(particles).forEach(function(s){ s.group.rotation.y=rotY; s.group.rotation.x=rotX; });
+      animateFX(t);
+    }
+    renderer.render(scene, camera);
+  })();
+}
+
+function buildPlaceholder(){
+  var g = new THREE.IcosahedronGeometry(0.7,3);
+  entityGroup.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0x1a2e25,metalness:0.8,roughness:0.2,emissive:0x0a1810,emissiveIntensity:0.4})));
+  entityGroup.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({color:0x4ecdc4,wireframe:true,transparent:true,opacity:0.07})));
+}
+
+function loadGLTF(){
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+  document.head.appendChild(s);
+  s.onload = function(){
+    new THREE.GLTFLoader().load(
+      '../v/'+sceneId+'.glb',
+      function(gltf){
+        while(entityGroup.children.length) entityGroup.remove(entityGroup.children[0]);
+        var model = gltf.scene;
+        var box = new THREE.Box3().setFromObject(model);
+        var sz  = new THREE.Vector3(); box.getSize(sz);
+        var sc  = 1.4/Math.max(sz.x,sz.y,sz.z);
+        model.scale.setScalar(sc);
+        var ctr = new THREE.Vector3(); box.getCenter(ctr);
+        model.position.sub(ctr.multiplyScalar(sc));
+        entityGroup.add(model);
+      },
+      null,
+      function(){ /* GLB not found — keep placeholder */ }
+    );
+  };
+}
+
+// ── PARTICLE SYSTEMS ──────────────────────────────────────────
+function buildAllFX(){
+  particles.halo  = buildHalo();
+  particles.orbs   = buildOrbs();
+  particles.aura   = buildAura();
+  particles.storm  = buildStorm();
+}
+
+function buildHalo(){
+  var g=new THREE.Group(), N=700;
+  var pos=new Float32Array(N*3),col=new Float32Array(N*3);
+  for(var i=0;i<N;i++){
+    var a=(i/N)*Math.PI*2, r=1.2+(Math.random()-.5)*.12, y=(Math.random()-.5)*.07;
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=y; pos[i*3+2]=Math.sin(a)*r;
+    var t=Math.random();
+    col[i*3]=0.5+t*.3; col[i*3+1]=0.8+t*.1; col[i*3+2]=0.6+t*.2;
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  var pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.025,vertexColors:true,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+  g.add(pts);
+  var ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.03,8,120),new THREE.MeshBasicMaterial({color:0xc9a84c,transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false}));
+  g.add(ring);
+  return{group:g,pts:pts,orig:pos.slice(),ring:ring};
+}
+
+function buildOrbs(){
+  var g=new THREE.Group(),orbs=[];
+  for(var i=0;i<10;i++){
+    var og=new THREE.Group();
+    var theta=Math.random()*Math.PI*2, phi=Math.acos(2*Math.random()-1), r=1.3+Math.random()*.4;
+    og.userData={theta:theta,phi:phi,r:r,speed:(0.3+Math.random()*.5)*(Math.random()<.5?1:-1),off:Math.random()*Math.PI*2};
+    var sz=.05+Math.random()*.05, c=new THREE.Color().setHSL(.08+Math.random()*.15,1,.65);
+    og.add(new THREE.Mesh(new THREE.SphereGeometry(sz,10,10),new THREE.MeshBasicMaterial({color:c,blending:THREE.AdditiveBlending,depthWrite:false})));
+    og.add(new THREE.Mesh(new THREE.SphereGeometry(sz*2.5,10,10),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthWrite:false})));
+    g.add(og); orbs.push(og);
+  }
+  return{group:g,orbs:orbs};
+}
+
+function buildAura(){
+  var g=new THREE.Group(),N=2500;
+  var pos=new Float32Array(N*3),vel=new Float32Array(N*3),col=new Float32Array(N*3);
+  for(var i=0;i<N;i++){
+    var th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=.82+Math.random()*.04;
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=r*Math.sin(ph)*Math.sin(th); pos[i*3+2]=r*Math.cos(ph);
+    vel[i*3+1]=.002+Math.random()*.004;
+    var t=Math.random(); col[i*3]=.5+t*.3; col[i*3+1]=.7+t*.2; col[i*3+2]=.2+t*.3;
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  var pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.016,vertexColors:true,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+  g.add(pts);
+  return{group:g,pts:pts,pos:pos,vel:vel,orig:pos.slice()};
+}
+
+function buildStorm(){
+  var g=new THREE.Group(),N=1800;
+  var pos=new Float32Array(N*3),col=new Float32Array(N*3),meta=new Float32Array(N*2);
+  for(var i=0;i<N;i++){
+    var a=Math.random()*Math.PI*2,r=.4+Math.random()*1.6,y=(Math.random()-.5)*2.5;
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=y; pos[i*3+2]=Math.sin(a)*r;
+    meta[i*2]=a; meta[i*2+1]=r;
+    var h=1-(r/2); col[i*3]=.6+h*.3; col[i*3+1]=.5+h*.3; col[i*3+2]=.1;
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  var pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.02,vertexColors:true,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+  g.add(pts);
+  return{group:g,pts:pts,pos:pos,meta:meta};
+}
+
+function animateFX(t){
+  if(fxMode==='halo'){
+    var h=particles.halo;
+    h.group.rotation.y=t*.35+rotY; h.group.rotation.x=rotX;
+    h.ring.scale.setScalar(1+Math.sin(t*2)*.03);
+    var p=h.pts.geometry.attributes.position;
+    for(var i=0;i<p.count;i++) p.array[i*3+1]=h.orig[i*3+1]+Math.sin(t*3+i*.5)*.04;
+    p.needsUpdate=true;
+  }
+  if(fxMode==='orbs'){
+    particles.orbs.orbs.forEach(function(o){
+      var d=o.userData;
+      d.theta+=d.speed*.01;
+      var bob=Math.sin(t*1.5+d.off)*.1;
+      o.position.set(d.r*Math.sin(d.phi)*Math.cos(d.theta),d.r*Math.cos(d.phi)+bob,d.r*Math.sin(d.phi)*Math.sin(d.theta));
+    });
+  }
+  if(fxMode==='aura'){
+    var s=particles.aura, pos=s.pos, vel=s.vel, orig=s.orig;
+    for(var i=0;i<pos.length/3;i++){
+      pos[i*3+1]+=vel[i*3+1]*.5;
+      if(pos[i*3+1]-orig[i*3+1]>.6+Math.random()*.4){ pos[i*3]=orig[i*3]; pos[i*3+1]=orig[i*3+1]; pos[i*3+2]=orig[i*3+2]; }
+    }
+    s.pts.geometry.attributes.position.needsUpdate=true;
+  }
+  if(fxMode==='storm'){
+    var s=particles.storm, pos=s.pos, meta=s.meta;
+    for(var i=0;i<pos.length/3;i++){
+      meta[i*2]+=(1/(meta[i*2+1]+.1))*.01;
+      pos[i*3]=Math.cos(meta[i*2])*meta[i*2+1];
+      pos[i*3+2]=Math.sin(meta[i*2])*meta[i*2+1];
+      pos[i*3+1]+=.003; if(pos[i*3+1]>1.4)pos[i*3+1]=-1.4;
+    }
+    s.pts.geometry.attributes.position.needsUpdate=true;
+  }
+}
+
+window.setFX=function(mode){
+  document.querySelectorAll('.fx-btn').forEach(function(b){b.classList.remove('active');});
+  event.target.classList.add('active');
+  Object.values(particles).forEach(function(s){s.group.visible=false;});
+  fxMode=mode;
+  particles[mode].group.visible=true;
+};
+
+// ── INIT BTN ──────────────────────────────────────────────────
+document.getElementById('init-btn').addEventListener('click',function(){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false})
+    .then(function(stream){
+      document.getElementById('init-overlay').classList.add('hidden');
+      initThree(stream);
+    })
+    .catch(function(e){
+      var eb=document.getElementById('error-box');
+      eb.style.display='block';
+      eb.textContent=e.name==='NotAllowedError'?'Akses kamera ditolak.':'Error: '+e.message;
+    });
+});
+</script>
+</body>
+</html>
