@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Fabel AR — Dusta di Balik Sayap Putih</title>
+
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --gold:   #c9a84c;
+      --teal:   #4ecdc4;
+      --dark:   #0b0f0e;
+      --panel:  rgba(8,18,15,0.92);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:'Crimson Text',serif; }
+
+    a-scene, canvas {
+      width:100vw !important; height:100vh !important;
+      position:fixed !important; top:0 !important; left:0 !important;
+    }
+
+    /* ── LOADING ── */
+    #loading-screen {
+      position:fixed; inset:0;
+      background:linear-gradient(160deg,#060e0b 0%,#0d1a14 60%,#060e0b 100%);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:9999; transition:opacity 0.9s ease;
+    }
+    #loading-screen.hidden { opacity:0; pointer-events:none; }
+    .load-bird { font-size:72px; margin-bottom:24px; animation:birdFloat 3s ease-in-out infinite; }
+    @keyframes birdFloat { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-14px) rotate(3deg)} }
+    .load-title { font-family:'Cinzel',serif; font-size:20px; color:var(--gold); letter-spacing:5px; text-transform:uppercase; margin-bottom:6px; }
+    .load-sub   { font-size:13px; color:rgba(78,205,196,0.7); letter-spacing:3px; margin-bottom:36px; font-style:italic; }
+    .load-bar-wrap { width:240px; height:2px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; margin-bottom:12px; }
+    .load-bar { height:100%; width:0%; background:linear-gradient(90deg,var(--gold),var(--teal)); border-radius:2px; transition:width 0.4s ease; }
+    .load-txt { font-size:11px; color:rgba(255,255,255,0.35); letter-spacing:2px; }
+
+    /* ── START ── */
+    #start-screen {
+      position:fixed; inset:0;
+      background:linear-gradient(160deg,#060e0b 0%,#0d1a14 60%,#060e0b 100%);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:9998;
+    }
+    #start-screen.hidden { display:none; }
+    .start-bird { font-size:80px; margin-bottom:20px; filter:drop-shadow(0 0 18px rgba(201,168,76,0.5)); }
+    .start-title { font-family:'Cinzel',serif; font-size:22px; color:var(--gold); letter-spacing:4px; text-transform:uppercase; margin-bottom:8px; text-align:center; padding:0 20px; }
+    .start-sub { font-size:14px; color:rgba(78,205,196,0.8); letter-spacing:2px; margin-bottom:10px; font-style:italic; }
+    .start-episode { font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:3px; margin-bottom:36px; }
+    #start-btn {
+      background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.5);
+      color:var(--gold); font-family:'Cinzel',serif; font-size:13px; letter-spacing:3px;
+      padding:14px 40px; border-radius:2px; cursor:pointer; text-transform:uppercase; transition:all 0.25s;
+    }
+    #start-btn:hover { background:rgba(201,168,76,0.25); box-shadow:0 0 20px rgba(201,168,76,0.3); }
+
+    /* ── HUD ── */
+    #hud { position:fixed; inset:0; pointer-events:none; z-index:200; display:none; }
+    #hud.visible { display:block; }
+
+    .corner { position:absolute; width:36px; height:36px; }
+    .corner::before,.corner::after { content:''; position:absolute; background:var(--gold); opacity:0.6; }
+    .corner-tl { top:14px; left:14px; }
+    .corner-tl::before { top:0;left:0;width:100%;height:1.5px; }
+    .corner-tl::after  { top:0;left:0;width:1.5px;height:100%; }
+    .corner-tr { top:14px; right:14px; }
+    .corner-tr::before { top:0;right:0;width:100%;height:1.5px; }
+    .corner-tr::after  { top:0;right:0;width:1.5px;height:100%; }
+    .corner-bl { bottom:14px; left:14px; }
+    .corner-bl::before { bottom:0;left:0;width:100%;height:1.5px; }
+    .corner-bl::after  { bottom:0;left:0;width:1.5px;height:100%; }
+    .corner-br { bottom:14px; right:14px; }
+    .corner-br::before { bottom:0;right:0;width:100%;height:1.5px; }
+    .corner-br::after  { bottom:0;right:0;width:1.5px;height:100%; }
+
+    #hud-top {
+      position:absolute; top:0; left:0; right:0;
+      display:flex; align-items:center; justify-content:space-between; padding:12px 22px;
+      background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,transparent 100%);
+    }
+    #hud-title { font-family:'Cinzel',serif; font-size:12px; color:var(--gold); letter-spacing:4px; text-transform:uppercase; }
+    #hud-status { font-size:10px; color:rgba(255,255,255,0.45); letter-spacing:2px; display:flex; align-items:center; gap:7px; }
+    .status-dot { width:6px; height:6px; border-radius:50%; background:var(--teal); animation:pulse 2s ease-in-out infinite; }
+    .status-dot.active { background:#69f0ae; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+    #scene-counter { position:absolute; top:52px; right:22px; font-family:'Cinzel',serif; font-size:10px; color:rgba(255,255,255,0.35); letter-spacing:2px; text-align:right; }
+    #scene-counter span { color:var(--gold); font-size:22px; font-weight:700; }
+
+    #scan-ring {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:160px; height:160px; pointer-events:none; transition:opacity 0.5s;
+    }
+    #scan-ring.hidden { opacity:0; }
+    #scan-ring svg { width:100%; height:100%; animation:scanRotate 4s linear infinite; }
+    @keyframes scanRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .scan-label { position:absolute; bottom:-26px; left:50%; transform:translateX(-50%); font-size:10px; color:rgba(201,168,76,0.6); letter-spacing:3px; white-space:nowrap; font-family:'Cinzel',serif; }
+
+    /* ── INFO PANEL ── */
+    #info-panel {
+      position:absolute; bottom:0; left:0; right:0; padding:18px 22px 28px;
+      background:linear-gradient(0deg,rgba(6,14,11,0.95) 0%,transparent 100%);
+      transform:translateY(100%); transition:transform 0.5s cubic-bezier(0.16,1,0.3,1);
+      pointer-events:auto;
+    }
+    #info-panel.visible { transform:translateY(0); }
+    #info-scene-num { font-family:'Cinzel',serif; font-size:10px; color:var(--teal); letter-spacing:3px; text-transform:uppercase; margin-bottom:3px; }
+    #info-title { font-family:'Cinzel',serif; font-size:18px; color:var(--gold); margin-bottom:8px; }
+    #info-desc { font-size:14px; color:rgba(255,255,255,0.72); line-height:1.65; margin-bottom:14px; max-width:480px; font-style:italic; }
+
+    /* open AlvaAR btn */
+    #btn-alva {
+      display:inline-flex; align-items:center; gap:8px;
+      background:rgba(78,205,196,0.12); border:1px solid rgba(78,205,196,0.4);
+      color:var(--teal); font-family:'Cinzel',serif; font-size:11px; letter-spacing:2px;
+      padding:9px 20px; border-radius:2px; cursor:pointer; transition:all 0.2s;
+      pointer-events:auto; text-transform:uppercase;
+    }
+    #btn-alva:hover { background:rgba(78,205,196,0.25); border-color:var(--teal); box-shadow:0 0 14px rgba(78,205,196,0.25); }
+
+    /* audio */
+    #audio-row { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+    #btn-audio {
+      display:flex; align-items:center; gap:7px;
+      background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.4);
+      color:var(--gold); font-size:11px; letter-spacing:2px; text-transform:uppercase;
+      padding:9px 18px; border-radius:2px; cursor:pointer; transition:all 0.2s; pointer-events:auto;
+      font-family:'Cinzel',serif;
+    }
+    #btn-audio:hover { background:rgba(201,168,76,0.25); }
+    #btn-audio svg { width:13px; height:13px; fill:currentColor; }
+    .wave { display:flex; align-items:center; gap:3px; height:22px; }
+    .wb { width:3px; background:var(--gold); border-radius:2px; opacity:0.5; }
+    .wb.on { animation:wv 0.8s ease-in-out infinite; }
+    .wb:nth-child(1){height:7px;animation-delay:.0s}
+    .wb:nth-child(2){height:13px;animation-delay:.1s}
+    .wb:nth-child(3){height:19px;animation-delay:.2s}
+    .wb:nth-child(4){height:11px;animation-delay:.3s}
+    .wb:nth-child(5){height:17px;animation-delay:.4s}
+    .wb:nth-child(6){height:9px;animation-delay:.2s}
+    .wb:nth-child(7){height:15px;animation-delay:.1s}
+    @keyframes wv { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1.2)} }
+
+    #toast {
+      position:absolute; top:60px; left:50%;
+      transform:translateX(-50%) translateY(-80px);
+      background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.4);
+      color:var(--gold); font-family:'Cinzel',serif; font-size:11px; letter-spacing:2px;
+      padding:9px 22px; border-radius:2px; white-space:nowrap;
+      transition:transform 0.4s cubic-bezier(0.16,1,0.3,1); backdrop-filter:blur(8px);
+    }
+    #toast.show { transform:translateX(-50%) translateY(0); }
+
+    #error-msg {
+      display:none; position:fixed; bottom:20px; left:0; width:100%;
+      text-align:center; color:#ff5252; font-size:13px; z-index:9999; padding:0 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+
+  <div class="load-bird">🦩</div>
+  <div class="load-title">Dusta di Balik Sayap Putih</div>
+  <div class="load-sub">Fabel Nusantara • AR Experience</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="loading-bar"></div></div>
+  <div class="load-txt" id="loading-text">MEMUAT SISTEM AR...</div>
+</div>
+
+<!-- START -->
+<div id="start-screen" class="hidden">
+  <div class="start-bird">🦀🕊️</div>
+  <div class="start-title">Dusta di Balik Sayap Putih</div>
+  <div class="start-sub">Fabel Bangau & Ketam</div>
+  <div class="start-episode">12 ADEGAN • AR IMAGE TRACKING</div>
+  <button id="start-btn">Mulai Cerita</button>
+</div>
+
+<div id="error-msg"></div>
+
+<!-- A-SCENE -->
+<a-scene
+  mindar-image="imageTargetSrc:v/ordertargets.mind; autoStart:false; maxTrack:1; filterMinCF:0.001; filterBeta:0.001; warmupTolerance:5; missTolerance:5; uiLoading:no; uiScanning:no; uiError:no;"
+  color-space="sRGB"
+  renderer="colorManagement:true; physicallyCorrectLights:true"
+  vr-mode-ui="enabled:false"
+  device-orientation-permission-ui="enabled:false">
+
+  <a-assets>
+    <audio id="a0"  src="v/0.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a1"  src="v/1.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a2"  src="v/2.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a3"  src="v/3.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a4"  src="v/4.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a5"  src="v/5.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a6"  src="v/6.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a7"  src="v/7.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a8"  src="v/8.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a9"  src="v/9.mp3"  preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a10" src="v/10.mp3" preload="none" crossorigin="ancientjava"></audio>
+    <audio id="a11" src="v/11.mp3" preload="none" crossorigin="ancientjava"></audio>
+    <a-asset-item id="m0"  src="v/0.glb"></a-asset-item>
+    <a-asset-item id="m1"  src="v/1.glb"></a-asset-item>
+    <a-asset-item id="m2"  src="v/2.glb"></a-asset-item>
+    <a-asset-item id="m3"  src="v/3.glb"></a-asset-item>
+    <a-asset-item id="m4"  src="v/4.glb"></a-asset-item>
+    <a-asset-item id="m5"  src="v/5.glb"></a-asset-item>
+    <a-asset-item id="m6"  src="v/6.glb"></a-asset-item>
+    <a-asset-item id="m7"  src="v/7.glb"></a-asset-item>
+    <a-asset-item id="m8"  src="v/8.glb"></a-asset-item>
+    <a-asset-item id="m9"  src="v/9.glb"></a-asset-item>
+    <a-asset-item id="m10" src="v/10.glb"></a-asset-item>
+    <a-asset-item id="m11" src="v/11.glb"></a-asset-item>
+  </a-assets>
+
+  <a-camera position="0 0.15 0" look-controls="enabled:false"></a-camera>
+
+  <a-entity mindar-image-target="targetIndex:0">
+    <a-gltf-model src="#m0"  position="0 0.15 0" scale="0.5 0.5 0.5"    rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:1">
+    <a-gltf-model src="#m1"  position="0 0.05 0" scale="1.2 1.2 1.2" rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:2">
+    <a-gltf-model src="#m2"  position="0 0.15 0" scale="0.9 0.9 0.9" rotation="0 45 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:3">
+    <a-gltf-model src="#m3"  position="0 0.15 0" scale="1 1 1"       rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:4">
+    <a-gltf-model src="#m4"  position="0 -0.05 0" scale="1.1 1.1 1.1" rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:5">
+    <a-gltf-model src="#m5"  position="0 0.15 0" scale="0.8 0.8 0.8" rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:6">
+    <a-gltf-model src="#m6"  position="0 0.15 0" scale="1 1 1"       rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:7">
+    <a-gltf-model src="#m7"  position="0 0.15 0" scale="1 1 1"       rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:8">
+    <a-gltf-model src="#m8"  position="0 0.1 0"  scale="1.3 1.3 1.3" rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:9">
+    <a-gltf-model src="#m9"  position="0 0.15 0" scale="0.9 0.9 0.9" rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:10">
+    <a-gltf-model src="#m10" position="0 0.15 0" scale="1 1 1"       rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+  <a-entity mindar-image-target="targetIndex:11">
+    <a-gltf-model src="#m11" position="0 0.15 0" scale="1.2 1.2 1.2" rotation="90 0 0"></a-gltf-model>
+  </a-entity>
+</a-scene>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+  <div id="hud-top">
+    <div id="hud-title">🕊️ Fabel AR</div>
+    <div id="hud-status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">SCANNING</span>
+    </div>
+  </div>
+  <div id="scene-counter">ADEGAN<br><span id="scene-num">—</span></div>
+  <div id="scan-ring">
+    <svg viewBox="0 0 160 160" fill="none">
+      <circle cx="80" cy="80" r="75" stroke="#c9a84c" stroke-width="1"   stroke-dasharray="10 6" opacity="0.3"/>
+      <circle cx="80" cy="80" r="60" stroke="#c9a84c" stroke-width="1.5" stroke-dasharray="3 18" opacity="0.5"/>
+      <path d="M80 7 L80 19"    stroke="#4ecdc4" stroke-width="1.5"/>
+      <path d="M80 141 L80 153" stroke="#4ecdc4" stroke-width="1.5"/>
+      <path d="M7 80 L19 80"    stroke="#4ecdc4" stroke-width="1.5"/>
+      <path d="M141 80 L153 80" stroke="#4ecdc4" stroke-width="1.5"/>
+    </svg>
+    <div class="scan-label">Arahkan ke gambar cerita</div>
+  </div>
+  <div id="info-panel">
+    <div id="info-scene-num">ADEGAN 01 / 12</div>
+    <div id="info-title">Judul Adegan</div>
+    <div id="info-desc">Deskripsi adegan.</div>
+    <div id="audio-row">
+      <button id="btn-audio">
+        <svg id="icon-play"  viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        <span id="btn-label">PLAY NARASI</span>
+      </button>
+      <div class="wave">
+        <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+        <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+        <div class="wb"></div>
+      </div>
+    </div>
+    <button id="btn-alva">
+      ◎ Buka di AlvaAR 3D
+    </button>
+  </div>
+  <div id="toast">ADEGAN TERDETEKSI</div>
+</div>
+
+<script>
+  var SCENES = [
+    {
+      id:0,  label:'ADEGAN 01', title:'Dusta di Balik Sayap Putih',
+      desc:'Di tepi Telaga Malini, Bangi sang bangau tua berdiri diam berpura-pura bertapa — seolah makhluk paling suci di hutan itu.',
+      alva:'../alva/entity.html?id=0'
+    },
+    {
+      id:1,  label:'ADEGAN 02', title:'Nila yang Penasaran',
+      desc:'Nila, ikan kecil yang penasaran, berenang mendekat. "Tuan Bangau, mengapa tidak berburu hari ini?" tanya Nila dengan suara gemetar.',
+      alva:'../alva/entity.html?id=1'
+    },
+    {
+      id:2,  label:'ADEGAN 03', title:'Ramalan Palsu',
+      desc:'"Aku bermimpi telaga ini akan kering," kata Bangi dengan nada dibuat-buat lembut. "Hatiku hancur memikirkan nasib kalian semua."',
+      alva:'../alva/entity.html?id=2'
+    },
+    {
+      id:3,  label:'ADEGAN 04', title:'Tawaran yang Memikat',
+      desc:'Bangi menawarkan solusi — sebuah telaga rahasia yang airnya selalu melimpah. Dia bersedia membawa ikan-ikan satu per satu di paruhnya.',
+      alva:'../alva/entity.html?id=3'
+    },
+    {
+      id:4,  label:'ADEGAN 05', title:'Nila Terbang Bersama Bangi',
+      desc:'Nila setuju. Bangi menjepit Nila di paruhnya dan terbang tinggi. Nila merasa beruntung, membayangkan rumah baru yang indah.',
+      alva:'../alva/entity.html?id=4'
+    },
+    {
+      id:5,  label:'ADEGAN 06', title:'Bukit Batu yang Gersang',
+      desc:'Bangi mendarat di bukit batu jauh dari air. Tanpa rasa kasihan, dia melahap Nila — lalu beristirahat sebelum mencari korban berikutnya.',
+      alva:'../alva/entity.html?id=5'
+    },
+    {
+      id:6,  label:'ADEGAN 07', title:'Hari-Hari Penipuan',
+      desc:'Berhari-hari Bangi melakukan tipu muslihat hingga ikan-ikan semakin sedikit. Keta sang ketam mulai merasakan sesuatu yang ganjil.',
+      alva:'../alva/entity.html?id=6'
+    },
+    {
+      id:7,  label:'ADEGAN 08', title:'Keta yang Cerdik',
+      desc:'"Bolehkah aku berpegangan pada lehermu dengan capitku?" pinta Keta. Bangi yang serakah setuju, membayangkan daging ketam yang lezat.',
+      alva:'../alva/entity.html?id=7'
+    },
+    {
+      id:8,  label:'ADEGAN 09', title:'Tulang-Tulang di Bukit Batu',
+      desc:'Di atas bukit, Keta melihat sisa tulang ikan berserakan. Dia sadar bahwa Bangi telah membohongi seluruh penghuni telaga.',
+      alva:'../alva/entity.html?id=8'
+    },
+    {
+      id:9,  label:'ADEGAN 10', title:'Konfrontasi di Udara',
+      desc:'"Tidak ada telaga baru!" seru Bangi tertawa. "Bukit batu ini meja makanku, dan kau adalah hidangan penutupnya!"',
+      alva:'../alva/entity.html?id=9'
+    },
+    {
+      id:10, label:'ADEGAN 11', title:'Keadilan Sang Ketam',
+      desc:'Keta mengapit leher Bangi dengan capit yang kuat. Bangi meronta-ronta tapi Keta tak melepas — sang penipu akhirnya jatuh tersungkur.',
+      alva:'../alva/entity.html?id=10'
+    },
+    {
+      id:11, label:'ADEGAN 12', title:'Kata Bijak',
+      desc:'"Kebenaran tidak bisa disembunyikan selamanya. Orang yang membangun kepercayaan di atas kebohongan, suatu hari akan tersungkur oleh tipu muslihatnya sendiri."',
+      alva:'../alva/entity.html?id=11'
+    }
+  ];
+
+  var activeId=-1, isPlaying=false, currentAudio=null, toastTimer=null;
+  var sceneEl   = document.querySelector('a-scene');
+  var loadingEl = document.getElementById('loading-screen');
+  var startEl   = document.getElementById('start-screen');
+  var startBtn  = document.getElementById('start-btn');
+  var hudEl     = document.getElementById('hud');
+  var errorEl   = document.getElementById('error-msg');
+  var loadBar   = document.getElementById('loading-bar');
+  var loadTxt   = document.getElementById('loading-text');
+
+  /* loading bar */
+  var pct=0;
+  var pTimer=setInterval(function(){
+    pct=Math.min(pct+Math.random()*8,85);
+    loadBar.style.width=pct+'%';
+    if(pct<30)      loadTxt.textContent='MEMUAT SKRIP AR...';
+    else if(pct<60) loadTxt.textContent='MEMUAT ASET 3D...';
+    else            loadTxt.textContent='MENYIAPKAN KAMERA...';
+  },300);
+
+  sceneEl.addEventListener('loaded',function(){
+    clearInterval(pTimer);
+    loadBar.style.width='100%';
+    loadTxt.textContent='SIAP!';
+    _bindTargets();
+    setTimeout(function(){
+      loadingEl.classList.add('hidden');
+      setTimeout(function(){ loadingEl.style.display='none'; startEl.classList.remove('hidden'); },900);
+    },500);
+  });
+
+  sceneEl.addEventListener('arError',function(e){ _showError('AR Error: '+(e.detail||'Unknown')); });
+
+  function _bindTargets(){
+    document.querySelectorAll('[mindar-image-target]').forEach(function(el){
+      var comp=el.components&&el.components['mindar-image-target'];
+      var idx=comp?comp.data.targetIndex:_parseIdx(el);
+      var s=SCENES[idx]; if(!s)return;
+      el.addEventListener('targetFound',function(){ _onFound(s); });
+      el.addEventListener('targetLost', function(){ _onLost(s);  });
+    });
+  }
+  function _parseIdx(el){
+    var a=el.getAttribute('mindar-image-target')||'';
+    var m=a.match(/targetIndex\s*:\s*(\d+)/i);
+    return m?parseInt(m[1],10):-1;
+  }
+
+  startBtn.addEventListener('click',function(){
+    startBtn.textContent='Memulai...'; startBtn.disabled=true;
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})
+      .then(function(){
+        startEl.classList.add('hidden');
+        hudEl.classList.add('visible');
+        return sceneEl.systems['mindar-image-system'].start();
+      })
+      .catch(function(e){
+        _showError(e.name==='NotAllowedError'?'Akses kamera ditolak.':'Gagal: '+e.message);
+        startBtn.textContent='Coba Lagi'; startBtn.disabled=false;
+      });
+  });
+
+  function _onFound(s){
+    activeId=s.id;
+    document.getElementById('status-dot').classList.add('active');
+    document.getElementById('status-text').textContent='TERDETEKSI';
+    document.getElementById('scan-ring').classList.add('hidden');
+    document.getElementById('scene-num').textContent=String(s.id+1).padStart(2,'0');
+    document.getElementById('info-scene-num').textContent=s.label+' / 12';
+    document.getElementById('info-title').textContent=s.title;
+    document.getElementById('info-desc').textContent=s.desc;
+    document.getElementById('btn-alva').onclick=function(){ window.open(s.alva,'_blank'); };
+    document.getElementById('info-panel').classList.add('visible');
+    _showToast('🦢 '+s.title.toUpperCase());
+    _stopAudio();
+    currentAudio=document.getElementById('a'+s.id);
+    _playAudio(currentAudio);
+  }
+
+  function _onLost(s){
+    if(activeId!==s.id)return;
+    activeId=-1;
+    document.getElementById('status-dot').classList.remove('active');
+    document.getElementById('status-text').textContent='SCANNING';
+    document.getElementById('scan-ring').classList.remove('hidden');
+    document.getElementById('info-panel').classList.remove('visible');
+    document.getElementById('scene-num').textContent='—';
+    _stopAudio();
+  }
+
+  function _playAudio(a){ if(!a)return; a.currentTime=0; var p=a.play(); if(p)p.then(function(){_setPlay(true);}).catch(function(){_setPlay(false);}); }
+  function _stopAudio(){ if(currentAudio){currentAudio.pause();currentAudio.currentTime=0;} currentAudio=null; _setPlay(false); }
+  function _setPlay(on){
+    isPlaying=on;
+    document.getElementById('icon-play').style.display=on?'none':'inline';
+    document.getElementById('icon-pause').style.display=on?'inline':'none';
+    document.getElementById('btn-label').textContent=on?'PAUSE':'PLAY NARASI';
+    document.querySelectorAll('.wb').forEach(function(b){ on?b.classList.add('on'):b.classList.remove('on'); });
+  }
+  document.getElementById('btn-audio').addEventListener('click',function(){
+    if(activeId<0){_showToast('Arahkan kamera ke gambar cerita');return;}
+    if(!currentAudio)currentAudio=document.getElementById('a'+activeId);
+    if(isPlaying){ currentAudio.pause(); _setPlay(false); }
+    else{ currentAudio.play().then(function(){_setPlay(true);}).catch(function(e){console.warn(e);}); }
+  });
+
+  function _showToast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){el.classList.remove('show');},2800); }
+  function _showError(msg){ errorEl.style.display='block'; errorEl.textContent=msg; console.error(msg); }
+</script>
+</body>
+</html>
