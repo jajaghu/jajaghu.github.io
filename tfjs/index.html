@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>TF.js AR — Fabel Bangau</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+
+  <!-- TensorFlow.js + MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.1/dist/hand-pose-detection.min.js"></script>
+
+  <style>
+    :root{ --gold:#c9a84c; --teal:#4ecdc4; --red:#ff6b6b; }
+    *{ margin:0; padding:0; box-sizing:border-box; }
+    body{ background:#000; overflow:hidden; font-family:'Crimson Text',serif; }
+
+    #video { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+    #overlay { position:fixed; inset:0; width:100%; height:100%; }
+
+    /* TOP BAR */
+    #top-bar{
+      position:fixed; top:0; left:0; right:0; padding:12px 20px;
+      background:linear-gradient(180deg,rgba(0,0,0,0.75),transparent);
+      display:flex; align-items:center; justify-content:space-between; z-index:100;
+    }
+    #app-title{ font-family:'Cinzel',serif; font-size:13px; color:var(--gold); letter-spacing:4px; }
+    #tf-badge{
+      font-size:10px; color:rgba(255,255,255,0.4); letter-spacing:2px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .tf-dot{ width:6px; height:6px; border-radius:50%; background:#ff5252; }
+    .tf-dot.ready{ background:#69f0ae; animation:pulse 1.5s infinite; }
+    @keyframes pulse{ 0%,100%{opacity:1}50%{opacity:0.3} }
+
+    /* GESTURE PANEL */
+    #gesture-panel{
+      position:fixed; top:60px; left:50%; transform:translateX(-50%);
+      background:rgba(6,14,11,0.85); border:1px solid rgba(201,168,76,0.3);
+      border-radius:4px; padding:10px 20px; text-align:center; z-index:100;
+      backdrop-filter:blur(8px); min-width:260px; transition:opacity 0.3s;
+    }
+    #gesture-label{ font-family:'Cinzel',serif; font-size:11px; color:var(--teal); letter-spacing:3px; margin-bottom:3px; }
+    #gesture-name{ font-family:'Cinzel',serif; font-size:16px; color:var(--gold); }
+
+    /* SCENE CARD */
+    #scene-card{
+      position:fixed; bottom:0; left:0; right:0;
+      background:linear-gradient(0deg,rgba(6,14,11,0.95),transparent);
+      padding:20px 22px 32px; z-index:100;
+      transform:translateY(100%); transition:transform 0.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    #scene-card.visible{ transform:translateY(0); }
+    #sc-nav{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .sc-arrow{
+      background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.3);
+      color:var(--gold); font-size:16px; width:36px; height:36px; border-radius:50%;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all 0.2s; font-family:monospace;
+    }
+    .sc-arrow:hover{ background:rgba(201,168,76,0.25); }
+    #sc-dots{ display:flex; gap:6px; }
+    .sc-dot{ width:6px; height:6px; border-radius:50%; background:rgba(201,168,76,0.25); transition:all 0.3s; }
+    .sc-dot.active{ background:var(--gold); transform:scale(1.4); }
+    #sc-label{ font-family:'Cinzel',serif; font-size:10px; color:var(--teal); letter-spacing:3px; margin-bottom:4px; }
+    #sc-title{ font-family:'Cinzel',serif; font-size:20px; color:var(--gold); margin-bottom:8px; }
+    #sc-desc{ font-size:14px; color:rgba(255,255,255,0.72); line-height:1.65; font-style:italic; max-width:500px; }
+
+    /* GESTURE HINTS */
+    #hints{
+      position:fixed; right:16px; top:50%; transform:translateY(-50%);
+      display:flex; flex-direction:column; gap:10px; z-index:100;
+    }
+    .hint{
+      background:rgba(0,0,0,0.6); border:1px solid rgba(78,205,196,0.2);
+      border-radius:8px; padding:8px 12px; text-align:center;
+      backdrop-filter:blur(6px); transition:all 0.3s;
+    }
+    .hint.active{ border-color:var(--teal); background:rgba(78,205,196,0.1); box-shadow:0 0 12px rgba(78,205,196,0.2); }
+    .hint-icon{ font-size:20px; }
+    .hint-txt{ font-size:9px; color:rgba(255,255,255,0.5); letter-spacing:1px; margin-top:3px; }
+
+    /* HAND SKELETON CANVAS */
+    #overlay{ pointer-events:none; z-index:50; }
+
+    /* LOADING */
+    #loading{
+      position:fixed; inset:0;
+      background:linear-gradient(160deg,#060e0b,#0d1a14);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200;
+    }
+    #loading.hidden{ display:none; }
+    .ld-bird{ font-size:64px; animation:birdFloat 3s ease-in-out infinite; margin-bottom:20px; }
+    @keyframes birdFloat{ 0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(3deg)} }
+    .ld-title{ font-family:'Cinzel',serif; font-size:16px; color:var(--gold); letter-spacing:4px; margin-bottom:8px; }
+    .ld-sub{ font-size:12px; color:rgba(78,205,196,0.7); letter-spacing:2px; font-style:italic; margin-bottom:28px; }
+    .ld-bar-wrap{ width:220px; height:2px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; margin-bottom:10px; }
+    .ld-bar{ height:100%; width:0%; background:linear-gradient(90deg,var(--gold),var(--teal)); transition:width 0.4s; }
+    .ld-txt{ font-size:11px; color:rgba(255,255,255,0.35); letter-spacing:2px; }
+    #start-btn-tf{
+      background:rgba(201,168,76,0.12); border:1px solid rgba(201,168,76,0.4);
+      color:var(--gold); font-family:'Cinzel',serif; font-size:12px; letter-spacing:3px;
+      padding:12px 36px; border-radius:2px; cursor:pointer; transition:all 0.2s; margin-top:16px; display:none;
+    }
+    #start-btn-tf:hover{ background:rgba(201,168,76,0.25); }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="ld-bird">🦢</div>
+  <div class="ld-title">TF.js — Fabel Bangau</div>
+  <div class="ld-sub">Hand Gesture + Cerita AR</div>
+  <div class="ld-bar-wrap"><div class="ld-bar" id="ld-bar"></div></div>
+  <div class="ld-txt"  id="ld-txt">MEMUAT TENSORFLOW.JS...</div>
+  <button id="start-btn-tf">Mulai</button>
+</div>
+
+<video id="video" playsinline muted></video>
+<canvas id="overlay"></canvas>
+
+<!-- TOP BAR -->
+<div id="top-bar">
+  <div id="app-title">🦢 TF.js Gesture AR</div>
+  <div id="tf-badge">
+    <div class="tf-dot" id="tf-dot"></div>
+    <span id="tf-txt">LOADING</span>
+  </div>
+</div>
+
+<!-- GESTURE PANEL -->
+<div id="gesture-panel">
+  <div id="gesture-label">GESTURE TERDETEKSI</div>
+  <div id="gesture-name">—</div>
+</div>
+
+<!-- HINTS -->
+<div id="hints">
+  <div class="hint" id="hint-open"><div class="hint-icon">✋</div><div class="hint-txt">BUKA<br>TANGAN</div></div>
+  <div class="hint" id="hint-point"><div class="hint-icon">☝️</div><div class="hint-txt">TUNJUK<br>ATAS</div></div>
+  <div class="hint" id="hint-fist"><div class="hint-icon">✊</div><div class="hint-txt">KEPAL<br>MUNDUR</div></div>
+  <div class="hint" id="hint-peace"><div class="hint-icon">✌️</div><div class="hint-txt">PEACE<br>MAJU</div></div>
+</div>
+
+<!-- SCENE CARD -->
+<div id="scene-card">
+  <div id="sc-nav">
+    <button class="sc-arrow" id="sc-prev">‹</button>
+    <div id="sc-dots"></div>
+    <button class="sc-arrow" id="sc-next">›</button>
+  </div>
+  <div id="sc-label">ADEGAN 01 / 12</div>
+  <div id="sc-title">—</div>
+  <div id="sc-desc">—</div>
+</div>
+
+<script>
+var SCENES=[
+  {id:0, label:'ADEGAN 01',title:'Dusta di Balik Sayap Putih',     desc:'Di tepi Telaga Malini, Bangi sang bangau tua berdiri diam berpura-pura bertapa — seolah makhluk paling suci di hutan itu.'},
+  {id:1, label:'ADEGAN 02',title:'Nila yang Penasaran',             desc:'Nila, ikan kecil yang penasaran, berenang mendekat. "Tuan Bangau, mengapa tidak berburu hari ini?" tanya Nila dengan suara gemetar.'},
+  {id:2, label:'ADEGAN 03',title:'Ramalan Palsu',                   desc:'"Aku bermimpi telaga ini akan kering," kata Bangi dengan nada dibuat-buat lembut. "Hatiku hancur memikirkan nasib kalian semua."'},
+  {id:3, label:'ADEGAN 04',title:'Tawaran yang Memikat',            desc:'Bangi menawarkan solusi — telaga rahasia yang airnya selalu melimpah. Dia bersedia membawa ikan-ikan satu per satu di paruhnya.'},
+  {id:4, label:'ADEGAN 05',title:'Nila Terbang Bersama Bangi',      desc:'Nila setuju. Bangi menjepit Nila di paruhnya dan terbang tinggi. Nila merasa beruntung, membayangkan rumah baru yang indah.'},
+  {id:5, label:'ADEGAN 06',title:'Bukit Batu yang Gersang',         desc:'Bangi mendarat di bukit batu jauh dari air. Tanpa rasa kasihan, dia melahap Nila — lalu beristirahat sebelum mencari korban berikutnya.'},
+  {id:6, label:'ADEGAN 07',title:'Hari-Hari Penipuan',              desc:'Berhari-hari Bangi melakukan tipu muslihat hingga ikan-ikan semakin sedikit. Keta sang ketam mulai merasakan sesuatu yang ganjil.'},
+  {id:7, label:'ADEGAN 08',title:'Keta yang Cerdik',                desc:'"Bolehkah aku berpegangan pada lehermu?" pinta Keta. Bangi yang serakah setuju, membayangkan daging ketam yang lezat.'},
+  {id:8, label:'ADEGAN 09',title:'Tulang-Tulang di Bukit Batu',     desc:'Di atas bukit, Keta melihat sisa tulang ikan berserakan. Dia sadar Bangi telah membohongi seluruh penghuni telaga.'},
+  {id:9, label:'ADEGAN 10',title:'Konfrontasi di Udara',            desc:'"Tidak ada telaga baru!" seru Bangi tertawa. "Bukit batu ini meja makanku, dan kau adalah hidangan penutupnya!"'},
+  {id:10,label:'ADEGAN 11',title:'Keadilan Sang Ketam',             desc:'Keta mengapit leher Bangi dengan capit yang kuat. Bangi meronta-ronta tapi Keta tak melepas — sang penipu akhirnya jatuh tersungkur.'},
+  {id:11,label:'ADEGAN 12',title:'Kata Bijak',                      desc:'"Kebenaran tidak bisa disembunyikan selamanya. Orang yang membangun kepercayaan di atas kebohongan akan tersungkur oleh tipu muslihatnya sendiri."'}
+];
+
+var currentScene=0;
+var detector=null;
+var gestureCD=0; // cooldown frames
+
+// ── DOTS ──────────────────────────────────────────────────────
+var dotsEl=document.getElementById('sc-dots');
+SCENES.forEach(function(s,i){
+  var d=document.createElement('div'); d.className='sc-dot'+(i===0?' active':''); dotsEl.appendChild(d);
+});
+
+function showScene(idx){
+  currentScene=Math.max(0,Math.min(11,idx));
+  var s=SCENES[currentScene];
+  document.getElementById('sc-label').textContent=s.label+' / 12';
+  document.getElementById('sc-title').textContent=s.title;
+  document.getElementById('sc-desc').textContent=s.desc;
+  document.querySelectorAll('.sc-dot').forEach(function(d,i){ d.classList.toggle('active',i===currentScene); });
+  document.getElementById('scene-card').classList.add('visible');
+}
+
+document.getElementById('sc-prev').addEventListener('click',function(){ showScene(currentScene-1); });
+document.getElementById('sc-next').addEventListener('click',function(){ showScene(currentScene+1); });
+showScene(0);
+
+// ── GESTURE DETECTION ─────────────────────────────────────────
+function countExtended(kp){
+  // returns count of extended fingers
+  var tips=[8,12,16,20], bases=[6,10,14,18], count=0;
+  tips.forEach(function(t,i){ if(kp[t].y<kp[bases[i]].y) count++; });
+  // thumb
+  if(kp[4].x < kp[3].x) count++; // rough thumb check (mirrored)
+  return count;
+}
+
+function classifyGesture(kp){
+  var ext=countExtended(kp);
+  // pointing: only index up
+  var idxUp  = kp[8].y < kp[6].y;
+  var midUp  = kp[12].y < kp[10].y;
+  var ringUp = kp[16].y < kp[14].y;
+  var pinUp  = kp[20].y < kp[18].y;
+
+  if(idxUp && midUp && !ringUp && !pinUp) return 'peace';   // ✌️
+  if(idxUp && !midUp && !ringUp && !pinUp) return 'point';  // ☝️
+  if(!idxUp && !midUp && !ringUp && !pinUp) return 'fist';  // ✊
+  if(ext >= 4) return 'open';                                // ✋
+  return 'none';
+}
+
+var GESTURE_LABELS={
+  open:  '✋ Tangan Terbuka — Tampilkan Adegan',
+  point: '☝️ Tunjuk — Adegan Berikutnya',
+  fist:  '✊ Kepal — Adegan Sebelumnya',
+  peace: '✌️ Peace — Sembunyikan Panel',
+  none:  '— Tidak ada gesture'
+};
+
+function applyGesture(g){
+  document.getElementById('gesture-name').textContent = GESTURE_LABELS[g]||'—';
+  ['open','point','fist','peace'].forEach(function(n){
+    document.getElementById('hint-'+n)&&document.getElementById('hint-'+n).classList.toggle('active',g===n);
+  });
+  if(gestureCD>0){ gestureCD--; return; }
+  if(g==='open'){  document.getElementById('scene-card').classList.add('visible'); gestureCD=40; }
+  if(g==='point'){ showScene(currentScene+1); gestureCD=40; }
+  if(g==='fist'){  showScene(currentScene-1); gestureCD=40; }
+  if(g==='peace'){ document.getElementById('scene-card').classList.remove('visible'); gestureCD=40; }
+}
+
+// ── DRAW SKELETON ─────────────────────────────────────────────
+var CONNECTIONS=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
+
+function drawHand(ctx,kp,W,H){
+  ctx.strokeStyle='rgba(201,168,76,0.6)'; ctx.lineWidth=2;
+  CONNECTIONS.forEach(function(c){
+    var a=kp[c[0]],b=kp[c[1]];
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  });
+  kp.forEach(function(p,i){
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,i===0?6:4,0,Math.PI*2);
+    ctx.fillStyle=i===0?'#c9a84c':'rgba(78,205,196,0.8)';
+    ctx.fill();
+  });
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────
+var video=document.getElementById('video');
+var canvas=document.getElementById('overlay');
+var ctx=canvas.getContext('2d');
+
+async function detect(){
+  if(!detector||video.readyState<2){ requestAnimationFrame(detect); return; }
+  canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  var hands=await detector.estimateHands(video,{flipHorizontal:true});
+  if(hands.length>0){
+    var kp=hands[0].keypoints;
+    drawHand(ctx,kp,canvas.width,canvas.height);
+    var g=classifyGesture(kp);
+    applyGesture(g);
+  } else {
+    document.getElementById('gesture-name').textContent='— Arahkan tangan ke kamera';
+    ['open','point','fist','peace'].forEach(function(n){
+      var el=document.getElementById('hint-'+n); if(el)el.classList.remove('active');
+    });
+  }
+  requestAnimationFrame(detect);
+}
+
+// ── LOAD SEQUENCE ─────────────────────────────────────────────
+var ldBar=document.getElementById('ld-bar');
+var ldTxt=document.getElementById('ld-txt');
+
+async function init(){
+  ldBar.style.width='20%'; ldTxt.textContent='MEMUAT TENSORFLOW.JS...';
+  await tf.ready();
+  ldBar.style.width='50%'; ldTxt.textContent='MEMUAT MODEL TANGAN...';
+
+  detector = await handPoseDetection.createDetector(
+    handPoseDetection.SupportedModels.MediaPipeHands,
+    { runtime:'tfjs', modelType:'lite', maxHands:1 }
+  );
+
+  ldBar.style.width='80%'; ldTxt.textContent='MENYIAPKAN KAMERA...';
+
+  try {
+    var stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    video.srcObject=stream; await video.play();
+    ldBar.style.width='100%'; ldTxt.textContent='SIAP!';
+    document.getElementById('tf-dot').classList.add('ready');
+    document.getElementById('tf-txt').textContent='AKTIF';
+    setTimeout(function(){ document.getElementById('loading').classList.add('hidden'); detect(); },600);
+  } catch(e) {
+    ldTxt.textContent='Kamera tidak bisa diakses';
+    var btn=document.getElementById('start-btn-tf');
+    btn.style.display='block';
+    btn.textContent='Coba Lagi';
+    btn.onclick=init;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
