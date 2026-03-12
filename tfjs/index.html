@@ -6,7 +6,8 @@
   <title>TF.js AR — Fabel Bangau</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
 
-  <!-- TensorFlow.js + MediaPipe Hands -->
+  <!-- TensorFlow.js + MediaPipe Hands (urutan penting!) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.1/dist/hand-pose-detection.min.js"></script>
@@ -288,13 +289,18 @@ var ldBar=document.getElementById('ld-bar');
 var ldTxt=document.getElementById('ld-txt');
 
 async function init(){
-  ldBar.style.width='20%'; ldTxt.textContent='MEMUAT TENSORFLOW.JS...';
+  ldBar.style.width='20%'; ldTxt.textContent='MEMUAT MEDIAPIPE...';
   await tf.ready();
-  ldBar.style.width='50%'; ldTxt.textContent='MEMUAT MODEL TANGAN...';
+  ldBar.style.width='45%'; ldTxt.textContent='MEMUAT MODEL (~12MB, harap tunggu)...';
 
   detector = await handPoseDetection.createDetector(
     handPoseDetection.SupportedModels.MediaPipeHands,
-    { runtime:'tfjs', modelType:'lite', maxHands:1 }
+    {
+      runtime: 'mediapipe',
+      solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915',
+      modelType: 'lite',
+      maxHands: 1
+    }
   );
 
   ldBar.style.width='80%'; ldTxt.textContent='MENYIAPKAN KAMERA...';
