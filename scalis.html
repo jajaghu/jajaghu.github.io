@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Synesthesia — Hear the Painting</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital@0;1&family=Playfair+Display:ital,wght@0,400;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0a0f;
+  --paper:#f5f0e8;
+  --accent:#c8432a;
+  --teal:#20c8a0;
+  --gold:#c8a020;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ background:var(--ink); overflow:hidden; font-family:'DM Mono',monospace; color:var(--paper); }
+
+#video{
+  position:fixed; inset:0; width:100%; height:100%;
+  object-fit:cover; z-index:0;
+  filter:saturate(1.15) contrast(1.05);
+}
+#analysis-canvas{ position:fixed; inset:0; width:100%; height:100%; z-index:5; pointer-events:none; }
+#viz-canvas{      position:fixed; inset:0; width:100%; height:100%; z-index:10; pointer-events:none; }
+#vignette{
+  position:fixed; inset:0; z-index:6; pointer-events:none;
+  background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.65) 100%);
+}
+
+/* ── TOP ── */
+#top{
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:18px 24px 14px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.8),transparent);
+  display:flex; align-items:flex-end; justify-content:space-between;
+}
+#top-title{ font-family:'Playfair Display',serif; font-style:italic; font-size:22px; color:var(--paper); letter-spacing:1px; }
+#top-sub{ font-size:9px; color:rgba(245,240,232,0.4); letter-spacing:3px; text-transform:uppercase; margin-top:3px; }
+#mode-badge{
+  font-size:9px; letter-spacing:3px; text-transform:uppercase;
+  border:1px solid rgba(245,240,232,0.25); padding:5px 12px; border-radius:2px;
+  color:rgba(245,240,232,0.5); cursor:pointer; transition:all 0.3s;
+  background:rgba(0,0,0,0.3); backdrop-filter:blur(4px);
+}
+#mode-badge.live{ border-color:var(--accent); color:var(--accent); }
+
+/* ── PALETTE ROW ── */
+#palette-row{
+  position:fixed; top:72px; left:24px; right:24px; z-index:100;
+  display:flex; gap:8px; align-items:center;
+}
+.swatch{
+  width:32px; height:32px; border-radius:50%;
+  border:2px solid rgba(255,255,255,0.15);
+  transition:all 0.4s ease; flex-shrink:0;
+}
+.swatch.active{ transform:scale(1.3); border-color:rgba(255,255,255,0.6); box-shadow:0 0 12px 2px rgba(255,255,255,0.2); }
+#entropy-bar-wrap{ flex:1; height:3px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden; margin-left:8px; }
+#entropy-bar{ height:100%; width:50%; border-radius:2px; transition:width 0.5s ease, background 0.5s ease; }
+#entropy-label{ font-size:9px; letter-spacing:2px; color:rgba(245,240,232,0.4); white-space:nowrap; min-width:80px; text-align:right; }
+
+/* ── SCORE ── */
+#score-panel{
+  position:fixed; left:24px; bottom:162px; z-index:100;
+  display:flex; flex-direction:column; gap:4px;
+}
+.score-row{ display:flex; align-items:center; gap:10px; }
+.score-key{ font-size:9px; letter-spacing:2px; color:rgba(245,240,232,0.35); width:90px; }
+.score-val{ font-family:'Playfair Display',serif; font-size:18px; color:var(--paper); }
+.score-unit{ font-size:8px; color:rgba(245,240,232,0.3); letter-spacing:2px; }
+
+/* ── NOTE DISPLAY ── */
+#note-display{ position:fixed; right:24px; bottom:162px; z-index:100; text-align:right; }
+#note-chord{ font-family:'Playfair Display',serif; font-size:36px; color:var(--paper); letter-spacing:2px; line-height:1; }
+#note-type{ font-size:9px; letter-spacing:3px; color:rgba(245,240,232,0.35); margin-top:4px; text-transform:uppercase; }
+
+/* ── WAVEFORM ── */
+#waveform{
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:90; pointer-events:none;
+  display:flex; align-items:center; gap:3px;
+  opacity:0; transition:opacity 0.5s;
+}
+#waveform.active{ opacity:1; }
+.wbar{ width:3px; background:rgba(245,240,232,0.6); border-radius:2px; animation:none; height:4px; }
+.wbar.playing{ animation:waveAnim 0.6s ease-in-out infinite; }
+@keyframes waveAnim{ 0%,100%{transform:scaleY(0.3)}50%{transform:scaleY(1)} }
+
+#mode-label{
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:95; pointer-events:none;
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:11px; letter-spacing:4px; text-transform:uppercase;
+  color:rgba(245,240,232,0.0); transition:color 1.5s ease;
+  text-align:center; margin-top:60px;
+}
+#mode-label.show{ color:rgba(245,240,232,0.55); }
+
+/* ── BOTTOM AREA ── */
+#bottom{
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  padding:10px 20px 26px;
+  background:linear-gradient(0deg,rgba(0,0,0,0.94) 0%,transparent 100%);
+  display:flex; flex-direction:column; gap:9px;
+}
+
+/* ── SINGLE SCAN/STOP TOGGLE ── */
+#scan-btn{
+  width:100%; padding:13px;
+  background:rgba(245,240,232,0.06); border:1px solid rgba(245,240,232,0.2);
+  color:var(--paper); font-family:'DM Mono',monospace; font-size:11px;
+  letter-spacing:3px; text-transform:uppercase; cursor:pointer; border-radius:2px;
+  transition:all 0.3s;
+}
+#scan-btn:hover{ background:rgba(245,240,232,0.11); border-color:rgba(245,240,232,0.45); }
+#scan-btn.active{
+  background:rgba(200,67,42,0.13); border-color:rgba(200,67,42,0.55);
+  color:var(--accent); animation:scanPulse 1.2s ease-in-out infinite;
+}
+@keyframes scanPulse{ 0%,100%{opacity:1}50%{opacity:0.65} }
+
+/* ── RHYTHM PADS ── */
+#rhythm-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+
+.rpad{
+  padding:9px 4px 7px;
+  background:rgba(245,240,232,0.03); border:1px solid rgba(245,240,232,0.1);
+  border-radius:3px; cursor:pointer; text-align:center;
+  transition:background 0.15s, border-color 0.15s, transform 0.1s;
+  user-select:none; position:relative;
+}
+.rpad:active{ transform:scale(0.94); }
+.rpad.on{ background:rgba(245,240,232,0.10); }
+.rpad.hit{ animation:padFlash 0.12s ease-out; }
+@keyframes padFlash{ 0%{filter:brightness(2.2)}100%{filter:brightness(1)} }
+
+/* individual pad colors */
+#pad-kick.on  { border-color:rgba(200,67,42,0.7);  box-shadow:0 0 12px rgba(200,67,42,0.2); }
+#pad-piano.on { border-color:rgba(42,143,200,0.7); box-shadow:0 0 12px rgba(42,143,200,0.2); }
+#pad-bass.on  { border-color:rgba(200,160,32,0.7); box-shadow:0 0 12px rgba(200,160,32,0.2); }
+#pad-hihat.on { border-color:rgba(32,200,160,0.7); box-shadow:0 0 12px rgba(32,200,160,0.2); }
+
+.rpad-icon{ font-size:20px; display:block; margin-bottom:3px; line-height:1; }
+.rpad-name{ font-size:8px; letter-spacing:2px; color:rgba(245,240,232,0.5); text-transform:uppercase; display:block; }
+.rpad-beat{ font-size:7px; color:rgba(245,240,232,0.22); letter-spacing:1px; display:block; margin-top:2px; }
+
+/* beat indicator dots */
+#beat-dots{
+  display:flex; justify-content:center; gap:6px;
+  padding:2px 0 0;
+}
+.bdot{
+  width:5px; height:5px; border-radius:50%;
+  background:rgba(245,240,232,0.12); transition:background 0.08s;
+}
+.bdot.tick{ background:rgba(245,240,232,0.7); }
+
+/* ── INIT ── */
+#init{
+  position:fixed; inset:0; z-index:300;
+  background:var(--ink);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:opacity 0.8s;
+}
+#init.hidden{ opacity:0; pointer-events:none; }
+#init-title{ font-family:'Playfair Display',serif; font-style:italic; font-size:32px; color:var(--paper); margin-bottom:8px; }
+#init-sub{ font-size:10px; letter-spacing:4px; color:rgba(245,240,232,0.35); text-transform:uppercase; margin-bottom:48px; }
+#init-desc{ font-size:13px; color:rgba(245,240,232,0.5); line-height:1.8; text-align:center; max-width:320px; margin-bottom:40px; font-family:'Playfair Display',serif; font-style:italic; }
+#init-btn{
+  background:transparent; border:1px solid rgba(245,240,232,0.3);
+  color:var(--paper); font-family:'DM Mono',monospace; font-size:11px;
+  letter-spacing:4px; padding:14px 40px; cursor:pointer; border-radius:2px;
+  transition:all 0.25s; text-transform:uppercase;
+}
+#init-btn:hover{ background:rgba(245,240,232,0.06); border-color:rgba(245,240,232,0.6); }
+</style>
+</head>
+<body>
+
+<div id="init">
+  <div id="init-title">Synesthesia</div>
+  <div id="init-sub">Hear the Painting</div>
+  <div id="init-desc">
+    Point your camera at any painting,<br>
+    artwork, or colored surface.<br>
+    The image will become sound.
+  </div>
+  <button id="init-btn">Open Camera</button>
+</div>
+
+<video id="video" playsinline muted></video>
+<canvas id="analysis-canvas"></canvas>
+<canvas id="viz-canvas"></canvas>
+<div id="vignette"></div>
+
+<div id="top">
+  <div>
+    <div id="top-title">Synesthesia</div>
+    <div id="top-sub">Color → Sound Scanner</div>
+  </div>
+  <div id="mode-badge" onclick="toggleMode()">SCAN MODE</div>
+</div>
+
+<div id="palette-row">
+  <div class="swatch" id="sw0"></div>
+  <div class="swatch" id="sw1"></div>
+  <div class="swatch" id="sw2"></div>
+  <div class="swatch" id="sw3"></div>
+  <div class="swatch" id="sw4"></div>
+  <div class="swatch" id="sw5"></div>
+  <div id="entropy-bar-wrap"><div id="entropy-bar"></div></div>
+  <div id="entropy-label">ENTROPY —</div>
+</div>
+
+<div id="score-panel">
+  <div class="score-row"><div class="score-key">HARMONY</div><div class="score-val" id="sv-harmony">—</div><div class="score-unit">%</div></div>
+  <div class="score-row"><div class="score-key">COMPLEXITY</div><div class="score-val" id="sv-complex">—</div><div class="score-unit">%</div></div>
+  <div class="score-row"><div class="score-key">VOICES</div><div class="score-val" id="sv-voices">—</div><div class="score-unit">ACTIVE</div></div>
+</div>
+
+<div id="note-display">
+  <div id="note-chord">—</div>
+  <div id="note-type">awaiting scan</div>
+</div>
+
+<div id="waveform"></div>
+<div id="mode-label"></div>
+
+<!-- ── BOTTOM ── -->
+<div id="bottom">
+
+  <!-- Single scan/stop toggle -->
+  <button id="scan-btn" onclick="toggleScan()">⊙ &nbsp;Scan &amp; Listen</button>
+
+  <!-- 4 Rhythm Pads -->
+  <div id="rhythm-row">
+    <div class="rpad" id="pad-kick"  onclick="togglePad('kick')">
+      <span class="rpad-icon">🥁</span>
+      <span class="rpad-name">Kick</span>
+      <span class="rpad-beat">4/4 · 80bpm</span>
+    </div>
+    <div class="rpad" id="pad-piano" onclick="togglePad('piano')">
+      <span class="rpad-icon">🎹</span>
+      <span class="rpad-name">Piano</span>
+      <span class="rpad-beat">8th · 80bpm</span>
+    </div>
+    <div class="rpad" id="pad-bass"  onclick="togglePad('bass')">
+      <span class="rpad-icon">🎸</span>
+      <span class="rpad-name">Bass</span>
+      <span class="rpad-beat">offbeat · 80bpm</span>
+    </div>
+    <div class="rpad" id="pad-hihat" onclick="togglePad('hihat')">
+      <span class="rpad-icon">🎵</span>
+      <span class="rpad-name">Hi-Hat</span>
+      <span class="rpad-beat">16th · 80bpm</span>
+    </div>
+  </div>
+
+  <!-- Beat indicator -->
+  <div id="beat-dots">
+    <div class="bdot" id="bd0"></div>
+    <div class="bdot" id="bd1"></div>
+    <div class="bdot" id="bd2"></div>
+    <div class="bdot" id="bd3"></div>
+    <div class="bdot" id="bd4"></div>
+    <div class="bdot" id="bd5"></div>
+    <div class="bdot" id="bd6"></div>
+    <div class="bdot" id="bd7"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// SCALES
+// ═══════════════════════════════════════════════════════
+var PENTATONIC_HZ = [261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99,880.00];
+var CHROMATIC_HZ  = [261.63,277.18,293.66,311.13,329.63,349.23,369.99,392.00,415.30,440.00,466.16,493.88];
+
+var HUE_TO_DEGREE = function(h){
+  if(h<30)  return 0;
+  if(h<60)  return 1;
+  if(h<90)  return 2;
+  if(h<150) return 3;
+  if(h<210) return 3;
+  if(h<270) return 4;
+  if(h<330) return 2;
+  return 0;
+};
+var WAVE_BY_BRIGHTNESS = function(b){
+  if(b>0.65) return 'sine';
+  if(b>0.35) return 'triangle';
+  return 'sawtooth';
+};
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+var audioCtx    = null;
+var activeNodes = [];
+var liveMode    = false;
+var liveTimer   = null;
+var scanActive  = false;   // toggle state for main button
+var video       = document.getElementById('video');
+var aCanvas     = document.getElementById('analysis-canvas');
+var aCtx        = aCanvas.getContext('2d');
+var vCanvas     = document.getElementById('viz-canvas');
+var vCtx        = vCanvas.getContext('2d');
+
+// rhythm state
+var BPM         = 80;
+var padState    = { kick:false, piano:false, bass:false, hihat:false };
+var rhythmNodes = {};  // active rhythm oscillator refs
+var sequencerInterval = null;
+var beatStep    = 0;
+
+// pad configs
+var PAD_DEFS = {
+  kick: {
+    // kick: steps 0,4 (downbeats in 8-step seq at 16th notes)
+    pattern: [1,0,0,0, 1,0,0,0],
+    color: 'rgba(200,67,42,',
+    makeSnd: function(ctx, t){ makeKick(ctx,t); }
+  },
+  piano: {
+    // piano: every other 16th (8th notes)
+    pattern: [1,0,1,0, 1,0,1,0],
+    color: 'rgba(42,143,200,',
+    makeSnd: function(ctx, t, analysis){ makePiano(ctx,t,analysis); }
+  },
+  bass: {
+    // bass: offbeat (steps 2,6)
+    pattern: [0,0,1,0, 0,0,1,0],
+    color: 'rgba(200,160,32,',
+    makeSnd: function(ctx, t, analysis){ makeBass(ctx,t,analysis); }
+  },
+  hihat: {
+    // hihat: every 16th
+    pattern: [1,1,1,1, 1,1,1,1],
+    color: 'rgba(32,200,160,',
+    makeSnd: function(ctx, t){ makeHihat(ctx,t); }
+  }
+};
+
+var lastAnalysis = null; // keep for rhythm to use
+
+// ═══════════════════════════════════════════════════════
+// WAVEFORM UI
+// ═══════════════════════════════════════════════════════
+var waveEl = document.getElementById('waveform');
+for(var i=0;i<24;i++){
+  var wb=document.createElement('div');
+  wb.className='wbar';
+  wb.style.animationDelay=(i*0.05)+'s';
+  wb.style.height=(8+Math.random()*28)+'px';
+  waveEl.appendChild(wb);
+}
+function setWaveActive(on){
+  waveEl.classList.toggle('active',on);
+  waveEl.querySelectorAll('.wbar').forEach(function(b){ b.classList.toggle('playing',on); });
+}
+
+// ═══════════════════════════════════════════════════════
+// COLOR ANALYSIS (same as v1)
+// ═══════════════════════════════════════════════════════
+function analyzeFrame(){
+  var W=video.videoWidth||640, H=video.videoHeight||480;
+  aCanvas.width=W; aCanvas.height=H;
+  aCtx.drawImage(video,0,0,W,H);
+  var data=aCtx.getImageData(0,0,W,H).data;
+  var hues=[],sats=[],brights=[];
+  for(var i=0;i<data.length;i+=32){
+    var r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255;
+    var hsb=rgbToHsb(r,g,b);
+    if(hsb.s>0.1){ hues.push(hsb.h); sats.push(hsb.s); brights.push(hsb.b); }
+  }
+  if(hues.length===0) return null;
+  var clusters=kMeans(hues,6);
+  var entropy=shannonEntropy(hues);
+  var entropyNorm=Math.min(1,entropy/3.5);
+  var edgeDensity=variance(brights);
+  var figScore=Math.min(1, entropyNorm*0.6+edgeDensity*10*0.4);
+  return{ clusters:clusters, entropy:entropyNorm, figScore:figScore, avgSat:mean(sats), avgBright:mean(brights), hues:hues };
+}
+
+function kMeans(values,k){
+  if(values.length===0) return [];
+  var centroids=[];
+  for(var i=0;i<k;i++) centroids.push(i*(360/k));
+  var clusters=[];
+  for(var iter=0;iter<8;iter++){
+    clusters=centroids.map(function(){ return []; });
+    values.forEach(function(v){
+      var best=0,bestD=hueDist(v,centroids[0]);
+      for(var j=1;j<k;j++){ var d=hueDist(v,centroids[j]); if(d<bestD){bestD=d;best=j;} }
+      clusters[best].push(v);
+    });
+    centroids=clusters.map(function(c){ return c.length===0?Math.random()*360:circularMean(c); });
+  }
+  return clusters.map(function(c,i){ return{hue:centroids[i],count:c.length}; })
+    .filter(function(c){ return c.count>0; })
+    .sort(function(a,b){ return b.count-a.count; }).slice(0,6);
+}
+function hueDist(a,b){ var d=Math.abs(a-b); return Math.min(d,360-d); }
+function circularMean(angles){
+  var sx=0,sy=0;
+  angles.forEach(function(a){ sx+=Math.cos(a*Math.PI/180); sy+=Math.sin(a*Math.PI/180); });
+  return((Math.atan2(sy/angles.length,sx/angles.length)*180/Math.PI)+360)%360;
+}
+function mean(arr){ return arr.reduce(function(a,b){return a+b;},0)/arr.length; }
+function variance(arr){ var m=mean(arr); return mean(arr.map(function(x){return(x-m)*(x-m);})); }
+function shannonEntropy(arr){
+  var counts={};
+  arr.forEach(function(v){ var b=Math.floor(v/30); counts[b]=(counts[b]||0)+1; });
+  var n=arr.length,e=0;
+  Object.values(counts).forEach(function(c){ if(c>0){var p=c/n;e-=p*Math.log2(p);} });
+  return e;
+}
+function rgbToHsb(r,g,b){
+  var max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+  var h=0,s=max===0?0:d/max,bv=max;
+  if(d!==0){
+    if(max===r) h=((g-b)/d+6)%6;
+    else if(max===g) h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h*=60;
+  }
+  return{h:h,s:s,b:bv};
+}
+
+// ═══════════════════════════════════════════════════════
+// AUDIO — MAIN SYNTH
+// ═══════════════════════════════════════════════════════
+function ensureAudio(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+}
+
+function stopMainSound(){
+  activeNodes.forEach(function(n){
+    try{ n.gain.gain.setTargetAtTime(0,audioCtx.currentTime,0.3);
+      setTimeout(function(){try{n.osc.stop();}catch(e){}},600); }catch(e){}
+  });
+  activeNodes=[];
+  setWaveActive(false);
+  document.getElementById('note-chord').textContent='—';
+  document.getElementById('note-type').textContent='stopped';
+  document.getElementById('sv-voices').textContent='0';
+}
+
+function playAnalysis(analysis){
+  ensureAudio();
+  stopMainSound();
+  lastAnalysis = analysis;
+
+  var isFigurative=analysis.figScore>0.52;
+  var scale=isFigurative?CHROMATIC_HZ:PENTATONIC_HZ;
+  var octaveOffset=analysis.avgBright>0.5?1:0;
+
+  // convolver reverb
+  var convolver=audioCtx.createConvolver();
+  var reverbLen=audioCtx.sampleRate*(0.5+analysis.avgBright*2);
+  var revBuf=audioCtx.createBuffer(2,reverbLen,audioCtx.sampleRate);
+  for(var ch=0;ch<2;ch++){
+    var chData=revBuf.getChannelData(ch);
+    for(var s=0;s<reverbLen;s++) chData[s]=(Math.random()*2-1)*Math.pow(1-s/reverbLen,2.5);
+  }
+  convolver.buffer=revBuf;
+  var reverbGain=audioCtx.createGain(); reverbGain.gain.value=0.18+analysis.entropy*0.25;
+  convolver.connect(reverbGain); reverbGain.connect(audioCtx.destination);
+
+  var masterGain=audioCtx.createGain(); masterGain.gain.value=0;
+  masterGain.connect(audioCtx.destination); masterGain.connect(convolver);
+  masterGain.gain.setTargetAtTime(0.45,audioCtx.currentTime,0.4);
+
+  var voices=0, maxVoices=Math.min(6,analysis.clusters.length);
+  analysis.clusters.slice(0,maxVoices).forEach(function(cluster,i){
+    var degree=HUE_TO_DEGREE(cluster.hue);
+    var octave=octaveOffset+(i<3?0:1);
+    var idx=Math.min(degree+octave*(scale===PENTATONIC_HZ?5:12),scale.length-1);
+    var freq=scale[idx];
+    var wave=WAVE_BY_BRIGHTNESS(analysis.avgBright);
+    var detune=(i-maxVoices/2)*4;
+    var vol=(cluster.count/analysis.clusters[0].count)*0.35*Math.pow(0.75,i)*(0.5+analysis.avgSat*0.5);
+    var pan=(i/(maxVoices-1||1))*2-1;
+    var osc=audioCtx.createOscillator(), gainN=audioCtx.createGain(), panner=audioCtx.createStereoPanner();
+    osc.type=wave; osc.frequency.value=freq; osc.detune.value=detune;
+    gainN.gain.value=0; panner.pan.value=pan;
+    osc.connect(gainN); gainN.connect(panner); panner.connect(masterGain);
+    osc.start(); gainN.gain.setTargetAtTime(vol,audioCtx.currentTime,0.3+i*0.1);
+    activeNodes.push({osc:osc,gain:gainN}); voices++;
+  });
+
+  var chordName=buildChordName(analysis.clusters,isFigurative);
+  document.getElementById('note-chord').textContent=chordName;
+  document.getElementById('note-type').textContent=isFigurative?'chromatic · dissonant':'pentatonic · harmonic';
+  document.getElementById('sv-voices').textContent=voices;
+  document.getElementById('sv-harmony').textContent=Math.round((1-analysis.figScore)*100);
+  document.getElementById('sv-complex').textContent=Math.round(analysis.figScore*100);
+  showModeLabel(isFigurative?'FIGURATIVE':'ABSTRACT');
+  setWaveActive(true);
+  updateSwatches(analysis.clusters);
+  updateEntropyBar(analysis.entropy,isFigurative);
+  drawViz(analysis);
+}
+
+// ═══════════════════════════════════════════════════════
+// AUDIO — RHYTHM ENGINE (Web Audio synthesis, no samples)
+// ═══════════════════════════════════════════════════════
+
+// ── Kick drum (sine burst + pitch drop) ──────────────
+function makeKick(ctx, t){
+  var osc=ctx.createOscillator(), env=ctx.createGain();
+  osc.connect(env); env.connect(ctx.destination);
+  osc.frequency.setValueAtTime(150,t);
+  osc.frequency.exponentialRampToValueAtTime(40,t+0.15);
+  env.gain.setValueAtTime(1,t);
+  env.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+  osc.start(t); osc.stop(t+0.31);
+}
+
+// ── Snare / Hi-hat (noise burst) ──────────────────────
+function makeHihat(ctx, t){
+  var bufSz=ctx.sampleRate*0.05;
+  var buf=ctx.createBuffer(1,bufSz,ctx.sampleRate);
+  var data=buf.getChannelData(0);
+  for(var i=0;i<bufSz;i++) data[i]=(Math.random()*2-1);
+  var src=ctx.createBufferSource();
+  src.buffer=buf;
+  var filt=ctx.createBiquadFilter(); filt.type='highpass'; filt.frequency.value=8000;
+  var env=ctx.createGain();
+  src.connect(filt); filt.connect(env); env.connect(ctx.destination);
+  env.gain.setValueAtTime(0.25,t);
+  env.gain.exponentialRampToValueAtTime(0.001,t+0.04);
+  src.start(t); src.stop(t+0.05);
+}
+
+// ── Piano (short pluck via decaying oscillator) ───────
+function makePiano(ctx, t, analysis){
+  // use the dominant color chord note
+  var freq = 392.00; // default G
+  if(analysis && analysis.clusters && analysis.clusters[0]){
+    var scale = analysis.figScore>0.52 ? CHROMATIC_HZ : PENTATONIC_HZ;
+    var deg   = HUE_TO_DEGREE(analysis.clusters[0].hue);
+    var idx   = Math.min(deg+5, scale.length-1);
+    freq      = scale[idx]; // upper octave
+  }
+  var osc=ctx.createOscillator(), env=ctx.createGain();
+  osc.type='triangle';
+  osc.frequency.setValueAtTime(freq,t);
+  // slight detune for warmth
+  osc.detune.value=(Math.random()-0.5)*8;
+  env.gain.setValueAtTime(0.22,t);
+  env.gain.setTargetAtTime(0,t+0.05,0.12);
+  var reverb=ctx.createConvolver();
+  var rLen=ctx.sampleRate*0.8;
+  var rBuf=ctx.createBuffer(1,rLen,ctx.sampleRate);
+  var rd=rBuf.getChannelData(0);
+  for(var i=0;i<rLen;i++) rd[i]=(Math.random()*2-1)*Math.pow(1-i/rLen,3);
+  reverb.buffer=rBuf;
+  var revG=ctx.createGain(); revG.gain.value=0.25;
+  osc.connect(env); env.connect(ctx.destination);
+  env.connect(reverb); reverb.connect(revG); revG.connect(ctx.destination);
+  osc.start(t); osc.stop(t+0.7);
+}
+
+// ── Bass (low sine, offbeat groove) ───────────────────
+function makeBass(ctx, t, analysis){
+  var freq=110; // A2 default
+  if(analysis && analysis.clusters && analysis.clusters[0]){
+    var scale=PENTATONIC_HZ;
+    var deg=HUE_TO_DEGREE(analysis.clusters[0].hue);
+    freq=scale[deg]/2; // one octave down
+  }
+  var osc=ctx.createOscillator(), env=ctx.createGain();
+  osc.type='sawtooth'; osc.frequency.value=freq;
+  var filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=400;
+  env.gain.setValueAtTime(0.4,t);
+  env.gain.setTargetAtTime(0,t+0.08,0.15);
+  osc.connect(filt); filt.connect(env); env.connect(ctx.destination);
+  osc.start(t); osc.stop(t+0.5);
+}
+
+// ═══════════════════════════════════════════════════════
+// SEQUENCER
+// ═══════════════════════════════════════════════════════
+var STEP_COUNT = 8;
+var stepInterval; // ms per 16th note at BPM
+
+function startSequencer(){
+  if(sequencerInterval) return;
+  beatStep = 0;
+  stepInterval = (60000/BPM)/2; // 16th note = half a beat
+  sequencerInterval = setInterval(tickSequencer, stepInterval);
+}
+function stopSequencer(){
+  if(sequencerInterval){ clearInterval(sequencerInterval); sequencerInterval=null; }
+  // clear beat dots
+  for(var i=0;i<8;i++) document.getElementById('bd'+i).classList.remove('tick');
+}
+function anyPadOn(){
+  return padState.kick||padState.piano||padState.bass||padState.hihat;
+}
+
+function tickSequencer(){
+  ensureAudio();
+  var t=audioCtx.currentTime+0.01; // tiny lookahead
+  var step=beatStep%STEP_COUNT;
+
+  // light beat dot
+  for(var i=0;i<8;i++) document.getElementById('bd'+i).classList.remove('tick');
+  document.getElementById('bd'+step).classList.add('tick');
+
+  // fire each active pad
+  Object.keys(PAD_DEFS).forEach(function(key){
+    if(!padState[key]) return;
+    var def=PAD_DEFS[key];
+    if(def.pattern[step]===1){
+      def.makeSnd(audioCtx, t, lastAnalysis);
+      // flash pad
+      flashPad(key);
+    }
+  });
+
+  beatStep++;
+}
+
+function flashPad(key){
+  var el=document.getElementById('pad-'+key);
+  if(!el) return;
+  el.classList.add('hit');
+  setTimeout(function(){ el.classList.remove('hit'); },120);
+}
+
+// ═══════════════════════════════════════════════════════
+// PAD TOGGLE
+// ═══════════════════════════════════════════════════════
+function togglePad(key){
+  ensureAudio();
+  padState[key]=!padState[key];
+  var el=document.getElementById('pad-'+key);
+  el.classList.toggle('on', padState[key]);
+
+  if(anyPadOn()){
+    startSequencer();
+  } else {
+    stopSequencer();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN SCAN TOGGLE
+// ═══════════════════════════════════════════════════════
+function toggleScan(){
+  if(video.readyState<2){ return; }
+  scanActive=!scanActive;
+  var btn=document.getElementById('scan-btn');
+
+  if(scanActive){
+    btn.classList.add('active');
+    btn.textContent='■  Stop';
+    // immediate scan
+    var a=analyzeFrame(); if(a) playAnalysis(a);
+    // live update every 2.5s
+    liveTimer=setInterval(function(){
+      if(video.readyState<2) return;
+      var a=analyzeFrame(); if(a) playAnalysis(a);
+    },2500);
+  } else {
+    btn.classList.remove('active');
+    btn.textContent='⊙  Scan & Listen';
+    if(liveTimer){ clearInterval(liveTimer); liveTimer=null; }
+    stopMainSound();
+    if(vizAnimFrame){ cancelAnimationFrame(vizAnimFrame); vizAnimFrame=null; }
+    vCtx.clearRect(0,0,vCanvas.width,vCanvas.height);
+  }
+}
+
+// Legacy (LIVE badge toggle still works)
+function toggleMode(){
+  // now just re-triggers a scan if active
+  if(scanActive){ var a=analyzeFrame(); if(a) playAnalysis(a); }
+}
+
+// ═══════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════
+function updateSwatches(clusters){
+  for(var i=0;i<6;i++){
+    var sw=document.getElementById('sw'+i);
+    if(clusters[i]){
+      var rgb=hsbToRgb(clusters[i].hue,0.7,0.85);
+      sw.style.background='rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
+      sw.classList.toggle('active',i===0);
+    } else {
+      sw.style.background='rgba(255,255,255,0.05)';
+      sw.classList.remove('active');
+    }
+  }
+}
+function updateEntropyBar(entropy,isFig){
+  var bar=document.getElementById('entropy-bar');
+  bar.style.width=(entropy*100)+'%';
+  bar.style.background=isFig?'linear-gradient(90deg,#c8432a,#e8a020)':'linear-gradient(90deg,#2a8fc8,#20c8a0)';
+  document.getElementById('entropy-label').textContent=(isFig?'FIGURATIVE':'ABSTRACT')+' '+Math.round(entropy*100)+'%';
+}
+function showModeLabel(txt){
+  var el=document.getElementById('mode-label');
+  el.textContent=txt; el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); },2500);
+}
+function hsbToRgb(h,s,b){
+  var c=b*s,x=c*(1-Math.abs((h/60)%2-1)),m=b-c,r,g,bv;
+  if(h<60){r=c;g=x;bv=0;}else if(h<120){r=x;g=c;bv=0;}
+  else if(h<180){r=0;g=c;bv=x;}else if(h<240){r=0;g=x;bv=c;}
+  else if(h<300){r=x;g=0;bv=c;}else{r=c;g=0;bv=x;}
+  return{r:Math.round((r+m)*255),g:Math.round((g+m)*255),b:Math.round((bv+m)*255)};
+}
+function freqToNoteName(freq){
+  var notes=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  var midi=Math.round(69+12*Math.log2(freq/440));
+  return notes[midi%12]+(Math.floor(midi/12)-1);
+}
+function buildChordName(clusters,isFig){
+  if(clusters.length===0) return '—';
+  var root=freqToNoteName(PENTATONIC_HZ[HUE_TO_DEGREE(clusters[0].hue)]);
+  if(isFig) return root+' cluster';
+  if(clusters.length>=3) return root+' penta';
+  if(clusters.length>=2) return root+' fifth';
+  return root;
+}
+
+// ═══════════════════════════════════════════════════════
+// VIZ CANVAS
+// ═══════════════════════════════════════════════════════
+var vizAnimFrame=null;
+function drawViz(analysis){
+  if(vizAnimFrame) cancelAnimationFrame(vizAnimFrame);
+  var W=window.innerWidth,H=window.innerHeight;
+  vCanvas.width=W; vCanvas.height=H;
+  var t0=Date.now();
+  function frame(){
+    vizAnimFrame=requestAnimationFrame(frame);
+    var t=(Date.now()-t0)/1000;
+    vCtx.clearRect(0,0,W,H);
+    analysis.clusters.forEach(function(cluster,i){
+      var rgb=hsbToRgb(cluster.hue,0.8,0.9);
+      var amp=40+cluster.count/analysis.clusters[0].count*60;
+      var freq2=0.8+i*0.4, phase=i*1.2;
+      var y0=H*0.5+i*18-analysis.clusters.length*9;
+      vCtx.beginPath();
+      vCtx.strokeStyle='rgba('+rgb.r+','+rgb.g+','+rgb.b+','+(0.15-i*0.02)+')';
+      vCtx.lineWidth=2+i*0.5;
+      for(var x=0;x<W;x+=3){
+        var y=y0+Math.sin(x/W*Math.PI*6*freq2+t*2+phase)*amp*(1-analysis.figScore*0.5);
+        if(x===0) vCtx.moveTo(x,y); else vCtx.lineTo(x,y);
+      }
+      vCtx.stroke();
+    });
+    var pulse=0.5+0.5*Math.sin(t*3);
+    vCtx.beginPath(); vCtx.arc(W/2,H/2,4+pulse*6,0,Math.PI*2);
+    vCtx.fillStyle='rgba(245,240,232,'+(0.06+pulse*0.04)+')'; vCtx.fill();
+  }
+  frame();
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.getElementById('init-btn').addEventListener('click',function(){
+  navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},
+    audio:false
+  }).then(function(stream){
+    video.srcObject=stream; video.play();
+    var initEl=document.getElementById('init');
+    initEl.classList.add('hidden');
+    setTimeout(function(){ initEl.style.display='none'; },900);
+  }).catch(function(e){
+    document.getElementById('init-btn').textContent='Retry — '+e.name;
+  });
+});
+</script>
+</body>
+</html>
