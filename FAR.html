@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Synesthesia — Musical Fireworks Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital@0;1&family=Playfair+Display:ital,wght@0,400;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0a0f;
+  --paper:#f5f0e8;
+  --accent:#c8432a;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ background:var(--ink); overflow:hidden; font-family:'DM Mono',monospace; color:var(--paper); }
+
+#video{
+  position:fixed; inset:0; width:100%; height:100%;
+  object-fit:cover; z-index:0;
+  filter:saturate(1.1) contrast(1.1);
+}
+#viz-canvas{ position:fixed; inset:0; width:100%; height:100%; z-index:10; pointer-events:none; }
+#vignette{
+  position:fixed; inset:0; z-index:6; pointer-events:none;
+  background:radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%);
+}
+
+/* UI TOP */
+#top{
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  padding:18px 24px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.8),transparent);
+  display:flex; align-items:center; justify-content:space-between;
+}
+#top-title{ font-family:'Playfair Display',serif; font-style:italic; font-size:22px; color:var(--paper); }
+
+/* PALETTE */
+#palette-row{
+  position:fixed; top:72px; left:24px; right:24px; z-index:100;
+  display:flex; gap:8px; align-items:center;
+}
+.swatch{ width:24px; height:24px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); }
+
+/* SCORE & NOTE */
+#score-panel{ position:fixed; left:24px; bottom:162px; z-index:100; font-size:9px; color:rgba(255,255,255,0.5); }
+#note-display{ position:fixed; right:24px; bottom:162px; z-index:100; text-align:right; }
+#note-chord{ font-family:'Playfair Display',serif; font-size:32px; color:var(--paper); }
+
+/* BOTTOM AREA */
+#bottom{
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  padding:10px 20px 26px;
+  background:linear-gradient(0deg,rgba(0,0,0,0.9) 0%,transparent 100%);
+  display:flex; flex-direction:column; gap:10px;
+}
+#scan-btn{
+  width:100%; padding:14px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+  color:var(--paper); font-family:inherit; letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+}
+#scan-btn.active{ color:var(--accent); border-color:var(--accent); background:rgba(200,67,42,0.1); }
+
+#rhythm-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.rpad{
+  padding:10px 5px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  border-radius:4px; text-align:center; cursor:pointer; transition: 0.1s;
+}
+.rpad.on{ border-color:var(--accent); background:rgba(255,255,255,0.15); }
+.rpad.hit{ transform: scale(0.95); filter: brightness(1.5); }
+.rpad-name{ font-size:8px; display:block; margin-top:4px; opacity:0.6; }
+
+/* INIT SCREEN */
+#init{
+  position:fixed; inset:0; z-index:300; background:var(--ink);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+#init.hidden{ opacity:0; pointer-events:none; transition: 0.8s; }
+#init-btn{
+  background:transparent; border:1px solid white; color:white;
+  padding:15px 40px; cursor:pointer; font-family:inherit; letter-spacing:3px;
+}
+</style>
+</head>
+<body>
+
+<div id="init">
+  <div style="font-family:'Playfair Display',serif; font-style:italic; font-size:32px; margin-bottom:40px;">Musical Fireworks</div>
+  <button id="init-btn">OPEN CAMERA</button>
+</div>
+
+<video id="video" playsinline muted></video>
+<canvas id="viz-canvas"></canvas>
+<div id="vignette"></div>
+
+<div id="top">
+  <div id="top-title">Synesthesia</div>
+  <div id="entropy-label" style="font-size:9px; letter-spacing:2px;">AWAITING SCAN</div>
+</div>
+
+<div id="palette-row">
+  <div class="swatch" id="sw0"></div>
+  <div class="swatch" id="sw1"></div>
+  <div class="swatch" id="sw2"></div>
+  <div class="swatch" id="sw3"></div>
+</div>
+
+<div id="score-panel">
+  <div id="sv-harmony">HARMONY: —</div>
+  <div id="sv-voices">VOICES: 0</div>
+</div>
+
+<div id="note-display">
+  <div id="note-chord">—</div>
+  <div id="note-type" style="font-size:9px; opacity:0.4;">SCAN COLOR</div>
+</div>
+
+<div id="bottom">
+  <button id="scan-btn" onclick="toggleScan()">⊙ SCAN & FIREWORKS</button>
+  <div id="rhythm-row">
+    <div class="rpad" id="pad-kick" onclick="togglePad('kick')">🥁<span class="rpad-name">KICK</span></div>
+    <div class="rpad" id="pad-piano" onclick="togglePad('piano')">🎹<span class="rpad-name">PIANO</span></div>
+    <div class="rpad" id="pad-bass" onclick="togglePad('bass')">🎸<span class="rpad-name">BASS</span></div>
+    <div class="rpad" id="pad-hihat" onclick="togglePad('hihat')">🎵<span class="rpad-name">HAT</span></div>
+  </div>
+</div>
+
+<script>
+// --- AUDIO DATA ---
+var PENTATONIC_HZ = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+var audioCtx = null;
+var activeNodes = [];
+var scanActive = false;
+var video = document.getElementById('video');
+var vCanvas = document.getElementById('viz-canvas');
+var vCtx = vCanvas.getContext('2d');
+var particles = [];
+var lastAnalysis = null;
+var padState = { kick:false, piano:false, bass:false, hihat:false };
+var sequencerInterval = null;
+var beatStep = 0;
+
+// --- FIREWORKS ENGINE ---
+function createExplosion(x, y, color, sizeMultiplier = 1) {
+    const count = 30 * sizeMultiplier;
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 2;
+        particles.push({
+            x: x, y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1.0,
+            decay: 0.015 + Math.random() * 0.02,
+            color: color,
+            radius: Math.random() * 2 + 1
+        });
+    }
+}
+
+function renderParticles() {
+    requestAnimationFrame(renderParticles);
+    vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+    
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.vy += 0.07; // Gravity
+        p.life -= p.decay;
+        
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        
+        vCtx.beginPath();
+        vCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        vCtx.fillStyle = p.color.replace('rgb', 'rgba').replace(')', `,${p.life})`);
+        vCtx.fill();
+    }
+}
+
+// --- COLOR ANALYSIS ---
+function analyzeFrame() {
+    const tempCanvas = document.createElement('canvas');
+    const tCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = 64; tempCanvas.height = 64; // Small for performance
+    tCtx.drawImage(video, 0, 0, 64, 64);
+    const data = tCtx.getImageData(0,0,64,64).data;
+    
+    let r=0, g=0, b=0;
+    for(let i=0; i<data.length; i+=4) {
+        r += data[i]; g += data[i+1]; b += data[i+2];
+    }
+    const count = data.length/4;
+    return { r: r/count, g: g/count, b: b/count };
+}
+
+// --- AUDIO LOGIC ---
+function ensureAudio() {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playScanSound(rgb) {
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    // Map Brightness to Frequency
+    const brightness = (rgb.r + rgb.g + rgb.b) / 3;
+    const freq = PENTATONIC_HZ[Math.floor(brightness / 50) % 6] || 261;
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+    
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 1);
+
+    // TRIGGER FIREWORKS
+    const colorStr = `rgb(${Math.round(rgb.r)},${Math.round(rgb.g)},${Math.round(rgb.b)})`;
+    createExplosion(window.innerWidth/2, window.innerHeight/2, colorStr, 2);
+    
+    document.getElementById('note-chord').textContent = freq.toFixed(0) + "Hz";
+    updateSwatches(colorStr);
+}
+
+// --- RHYTHM SEQUENCER ---
+function tickSequencer() {
+    const t = audioCtx.currentTime;
+    const step = beatStep % 8;
+    
+    if(padState.kick && step % 4 === 0) {
+        makeKick(audioCtx, t);
+        flashPad('kick');
+        createExplosion(window.innerWidth/2, window.innerHeight * 0.8, 'rgb(200,60,40)', 0.8);
+    }
+    if(padState.hihat) {
+        makeHihat(audioCtx, t);
+        flashPad('hihat');
+        createExplosion(Math.random()*window.innerWidth, 50, 'rgb(200,200,255)', 0.3);
+    }
+    beatStep++;
+}
+
+// --- AUDIO SYNTHS ---
+function makeKick(ctx, t) {
+    const osc = ctx.createOscillator(); const env = ctx.createGain();
+    osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(0.01, t+0.5);
+    env.gain.setValueAtTime(1, t); env.gain.exponentialRampToValueAtTime(0.01, t+0.5);
+    osc.connect(env); env.connect(ctx.destination);
+    osc.start(t); osc.stop(t+0.5);
+}
+function makeHihat(ctx, t) {
+    const filter = ctx.createBiquadFilter(); filter.type = "highpass"; filter.frequency.value = 7000;
+    const osc = ctx.createOscillator(); osc.type = "square";
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.1, t); env.gain.exponentialRampToValueAtTime(0.01, t+0.05);
+    osc.connect(filter); filter.connect(env); env.connect(ctx.destination);
+    osc.start(t); osc.stop(t+0.05);
+}
+
+// --- UI & CONTROLS ---
+function toggleScan() {
+    scanActive = !scanActive;
+    const btn = document.getElementById('scan-btn');
+    if(scanActive) {
+        btn.classList.add('active');
+        const rgb = analyzeFrame();
+        playScanSound(rgb);
+    } else {
+        btn.classList.remove('active');
+    }
+}
+
+function togglePad(key) {
+    ensureAudio();
+    padState[key] = !padState[key];
+    document.getElementById('pad-'+key).classList.toggle('on');
+    if(!sequencerInterval) sequencerInterval = setInterval(tickSequencer, 150);
+}
+
+function flashPad(key) {
+    const el = document.getElementById('pad-'+key);
+    el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 100);
+}
+
+function updateSwatches(color) {
+    document.getElementById('sw0').style.backgroundColor = color;
+}
+
+// --- INIT ---
+document.getElementById('init-btn').addEventListener('click', () => {
+    navigator.mediaDevices.getUserMedia({ video: {facingMode:'environment'} })
+    .then(stream => {
+        video.srcObject = stream; video.play();
+        document.getElementById('init').classList.add('hidden');
+        vCanvas.width = window.innerWidth; vCanvas.height = window.innerHeight;
+        renderParticles();
+    });
+});
+</script>
+</body>
+</html>
